@@ -98,6 +98,44 @@ def test_pipeline_via_api_full_round_trip(api_client, sample_crime_csv):
 
 
 @pytest.mark.usefixtures("_require_llm_key")
+def test_pipeline_returns_follow_ups(api_client, sample_crime_csv):
+    with open(sample_crime_csv, "rb") as f:
+        upload = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")})
+    dataset_id = upload.json()["data"][0]["id"]
+    session_id = api_client.post("/api/sessions", json={"dataset_ids": [dataset_id]}).json()["data"]["id"]
+
+    r = api_client.post(f"/api/sessions/{session_id}/messages",
+                        json={"question": "How many rows are grouped by district?"})
+    assert r.status_code == 200
+    follow_ups = r.json()["data"]["follow_ups"]
+    assert isinstance(follow_ups, list)
+    # persisted on the turn and returned in history
+    detail = api_client.get(f"/api/sessions/{session_id}")
+    assistant_turns = [t for t in detail.json()["data"]["turns"] if t["role"] == "assistant"]
+    assert assistant_turns and "follow_ups" in assistant_turns[-1]
+
+
+@pytest.mark.usefixtures("_require_llm_key")
+def test_pipeline_multi_file_join(api_client, sample_crime_csv, sample_stations_csv):
+    with open(sample_crime_csv, "rb") as f:
+        d1 = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")}).json()["data"][0]["id"]
+    with open(sample_stations_csv, "rb") as f:
+        d2 = api_client.post("/api/datasets", files={"files": ("station_rosters.csv", f, "text/csv")}).json()["data"][0]["id"]
+
+    session_id = api_client.post("/api/sessions", json={"dataset_ids": [d1, d2]}).json()["data"]["id"]
+
+    r = api_client.post(
+        f"/api/sessions/{session_id}/messages",
+        json={"question": "How many officers are in the district named Lucknow?"},
+    )
+    assert r.status_code == 200
+    body = r.json()["data"]
+    # station_rosters puts 120 officers in Lucknow — answer must come from the
+    # second dataset, proving both dataframes are in scope.
+    assert "120" in body["content"]
+
+
+@pytest.mark.usefixtures("_require_llm_key")
 def test_pipeline_conversation_history_supports_followup(api_client, sample_crime_csv):
     with open(sample_crime_csv, "rb") as f:
         upload = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")})

@@ -50,6 +50,7 @@ class ConversationTurnRow(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     table_data: Mapped[list | None] = mapped_column(JSON, nullable=True)
     chart_spec: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    follow_ups: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=_now)
 
 

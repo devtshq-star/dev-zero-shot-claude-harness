@@ -65,27 +65,28 @@ Today, answering "how many thefts in Lucknow last month" or "which stations have
 - **Gate command:** `uv run alembic upgrade head && uv run pytest tests/ -v` (against the real Postgres DB in `.env` and the real NVIDIA API key), plus `npx playwright test tests/e2e/ --reporter=line` against the live server at `http://localhost:8001/app/`.
 - **How the user tests it (handoff seed):** open `http://localhost:8001/app/`, upload a CSV (a sample crime-records CSV is provided), see the auto-profile appear, ask a real question (e.g. "how many rows are there" or "what's the breakdown by district column"), see a real computed answer with a table, ask a deliberately ambiguous question and see the agent ask a clarifying question instead of guessing. MSSQL, exports, and access control are not shown as UI stubs (chat-only interface) — their absence is expected, not a bug.
 
-### Phase 2 — Proactive Intelligence, Multi-file Analysis & Access Control
+### Phase 2 — Multi-file Analysis, Proactive Intelligence & Export
 
-- **Goal:** wire the deferred Phase-1 gaps into real functionality: combine multiple files into one analysis, get unsolicited data-quality/anomaly flags and follow-up suggestions, export results, and enforce access control before any production rollout.
+- **Goal:** wire the deferred Phase-1 analyst-facing gaps into real functionality: combine multiple uploaded files into one analysis, get unsolicited data-quality flags plus 2–3 follow-up-question suggestions after each answer, and export a result as CSV or PDF.
 - **Independent slices (parallel build units):**
   - `slice-multifile` (backend) — multi-dataset join/compare support in `generate_code`/`execute_code` prompting and the sandbox context (multiple dataframes addressable by name). Deps: none (extends Phase 1's `slice-graph` surfaces).
-  - `slice-proactive` (backend) — anomaly/data-quality flagging during profiling and after each answer; 2–3 follow-up-question suggestions appended to each assistant turn. Deps: none.
-  - `slice-export` (backend + frontend) — CSV/PDF export of a turn's result table; export button in the UI. Deps: none.
-  - `slice-access` (backend) — role (analyst/officer/senior-official) and district/station scoping on datasets and sessions; dataset-ownership default-private-to-uploader; simple login/session identity. Deps: none.
-- **Key surfaces / files:** `src/graph/nodes.py`, `src/tools/`, `src/api/datasets.py`, `src/api/sessions.py`, new `src/api/auth.py` + `src/domain/user.py`, `frontend/src/app/**`.
-- **Gate command:** `uv run pytest tests/ -v` against real Postgres + real NVIDIA key; Playwright e2e covering multi-file join, an export click, and an access-denied case.
-- **How the user tests it:** upload two related CSVs and ask a question that requires joining them; ask a normal question and see 2–3 follow-up suggestions plus any data-quality flags; click export and get a file; log in as two different roles/districts and confirm each only sees their own data.
+  - `slice-proactive` (backend) — a data-quality summary surfaced on the profile (columns with high null rates, duplicate rows) and referenced when relevant in answers; 2–3 follow-up-question suggestions generated in `finalize_answer` and returned on each assistant turn. Deps: none.
+  - `slice-export` (backend + frontend) — CSV and PDF export of a turn's result table via a new export endpoint; export buttons in the chat UI. Deps: none.
+  - `slice-frontend` (frontend) — clickable follow-up-suggestion chips under each answer, a data-quality summary on the profile card, and the export buttons wired to the export endpoint. Deps: none at build time (builds against the updated `spec/api.md`).
+- **Key surfaces / files:** `src/graph/nodes.py`, `src/prompts/*.md`, `src/tools/`, `src/api/sessions.py` (export route), `src/domain/session.py`, `frontend/src/app/**`.
+- **Gate command:** `uv run pytest tests/ -v` against real Postgres + real NVIDIA key; Playwright e2e covering a multi-file question, follow-up chips rendering + click, and a CSV export download.
+- **How the user tests it:** upload two related CSVs, start one session over both, and ask a question that spans them; ask a normal question and see 2–3 clickable follow-up suggestions plus any data-quality flags; click "Export CSV"/"Export PDF" on an answer and get a file.
 
-### Phase 3 — Live MSSQL Connection with Low-Load Query Layer
+### Phase 3 — Live MSSQL Connection, Low-Load Query Layer & Access Control
 
-- **Goal:** extend the same chat Q&A engine to answer questions against a live production MSSQL database, transparently alongside CSV datasets, without raw rows ever reaching the LLM and without adding meaningful load/latency to the source DB.
+- **Goal:** extend the same chat Q&A engine to answer questions against a live production MSSQL database, transparently alongside CSV datasets, without raw rows ever reaching the LLM and without adding meaningful load/latency to the source DB — and put access control in place first, since it is a hard prerequisite for any production MSSQL rollout.
 - **Independent slices (parallel build units):**
-  - `slice-mssql-schema` (backend) — read-only MSSQL connection (ideally against a read replica) + schema introspection surfaced to `generate_code` the same way CSV schemas are (columns/dtypes only, never rows). Deps: none.
+  - `slice-access` (backend + frontend) — role (analyst/officer/senior-official) and district/station scoping on datasets and sessions; dataset-ownership default-private-to-uploader; simple login/session identity. **Prerequisite for the MSSQL slices** — production police data must not be queryable without it. Deps: none.
+  - `slice-mssql-schema` (backend) — read-only MSSQL connection (ideally against a read replica) + schema introspection surfaced to `generate_code` the same way CSV schemas are (columns/dtypes only, never rows). Deps: `slice-access`.
   - `slice-mssql-exec` (backend) — parameterized, read-only SQL generation and execution against MSSQL with query timeouts and row-count caps. Deps: `slice-mssql-schema`.
   - `slice-cache` (backend) — a query-result cache (keyed on generated SQL + params, TTL-based) sitting in front of MSSQL so repeat/similar questions don't re-hit the production DB. Deps: `slice-mssql-exec`.
   - `slice-sampling` (backend) — sampling/pagination strategy for multi-million-row tables so answers stay within the latency budget. Deps: `slice-mssql-exec`.
   - `slice-unified-chat` (backend + frontend) — a data-source picker/auto-detect so the existing chat UI can target CSV datasets or the MSSQL connection without the user needing to know which. Deps: `slice-mssql-exec`.
-- **Key surfaces / files:** `src/db/mssql.py` (new connection module, separate from the app's own Postgres session), `src/graph/nodes.py`, `src/tools/query_cache.py`, `frontend/src/app/**`.
-- **Gate command:** `uv run pytest tests/ -v` against a real (test) MSSQL instance + real NVIDIA key; a load/latency assertion test that a repeated question hits the cache, not MSSQL, on the second call.
-- **How the user tests it:** ask a question that only the MSSQL source can answer (a table not in any uploaded CSV) and get a real computed answer; ask the same question again and confirm (via a visible cache indicator or timing) it didn't re-query MSSQL.
+- **Key surfaces / files:** new `src/api/auth.py` + `src/domain/user.py`, `src/db/mssql.py` (new connection module, separate from the app's own Postgres session), `src/graph/nodes.py`, `src/tools/query_cache.py`, `frontend/src/app/**`.
+- **Gate command:** `uv run pytest tests/ -v` against a real (test) MSSQL instance + real NVIDIA key; an access-denied test (a user cannot see another district's data); a load/latency assertion test that a repeated question hits the cache, not MSSQL, on the second call.
+- **How the user tests it:** log in as two different roles/districts and confirm each only sees their own data; ask a question that only the MSSQL source can answer (a table not in any uploaded CSV) and get a real computed answer; ask the same question again and confirm (via a visible cache indicator or timing) it didn't re-query MSSQL.

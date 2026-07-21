@@ -20,6 +20,7 @@ class TurnResponse(BaseModel):
     content: str
     table_data: list[dict] | None = None
     chart_spec: dict | None = None
+    follow_ups: list[str] = []
     created_at: datetime
 
 
@@ -44,4 +45,5 @@ class MessageResponse(BaseModel):
     table_data: list[dict] | None = None
     chart_spec: dict | None = None
     needs_clarification: bool
+    follow_ups: list[str] = []
     token_usage: TokenUsage

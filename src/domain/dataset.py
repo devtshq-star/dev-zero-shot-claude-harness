@@ -23,4 +23,5 @@ class DatasetResponse(BaseModel):
     row_count: int
     column_count: int
     profile: DatasetProfile
+    data_quality_flags: list[str] = []
     uploaded_at: datetime

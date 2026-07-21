@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from api._common import ok, api_error
@@ -14,6 +15,7 @@ from domain.session import (
     TokenUsage,
 )
 from graph.runner import run_agent
+from tools.export import table_to_csv_bytes, table_to_pdf_bytes
 
 router = APIRouter()
 
@@ -58,7 +60,8 @@ def get_session_detail(session_id: str, session: Session = Depends(get_session))
         turns=[
             TurnResponse(
                 id=t.id, role=t.role, content=t.content,
-                table_data=t.table_data, chart_spec=t.chart_spec, created_at=t.created_at,
+                table_data=t.table_data, chart_spec=t.chart_spec,
+                follow_ups=t.follow_ups or [], created_at=t.created_at,
             )
             for t in turns
         ],
@@ -92,9 +95,53 @@ def post_message(session_id: str, req: MessageRequest, session: Session = Depend
         table_data=result["table_data"],
         chart_spec=result["chart_spec"],
         needs_clarification=result["needs_clarification"],
+        follow_ups=result.get("follow_ups") or [],
         token_usage=TokenUsage(**result["token_usage"]),
     )
     return ok(response.model_dump(mode="json"))
+
+
+@router.get("/sessions/{session_id}/turns/{turn_id}/export")
+def export_turn(session_id: str, turn_id: str, format: str = "csv", session: Session = Depends(get_session)):
+    fmt = (format or "csv").lower()
+    if fmt not in ("csv", "pdf"):
+        raise api_error("INVALID_FORMAT", "format must be 'csv' or 'pdf'", 400)
+
+    turn = session.get(ConversationTurnRow, turn_id)
+    if turn is None or turn.session_id != session_id:
+        raise api_error("NOT_FOUND", "Turn not found in this session", 404)
+    if not turn.table_data:
+        raise api_error("NO_TABLE", "This answer has no table to export", 400)
+
+    if fmt == "csv":
+        payload = table_to_csv_bytes(turn.table_data)
+        media_type = "text/csv"
+        filename = f"result-{turn_id[:8]}.csv"
+    else:
+        payload = table_to_pdf_bytes(turn.table_data, title=_export_title(session, turn))
+        media_type = "application/pdf"
+        filename = f"result-{turn_id[:8]}.pdf"
+
+    return StreamingResponse(
+        iter([payload]),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _export_title(session: Session, turn: ConversationTurnRow) -> str:
+    """Use the user question that preceded this answer as the PDF heading."""
+    prior = (
+        session.query(ConversationTurnRow)
+        .filter(
+            ConversationTurnRow.session_id == turn.session_id,
+            ConversationTurnRow.role == "user",
+            ConversationTurnRow.created_at <= turn.created_at,
+        )
+        .order_by(ConversationTurnRow.created_at.desc())
+        .first()
+    )
+    return prior.content if prior else "Analysis result"
 
 
 def _to_response(conv_session: ConversationSessionRow) -> SessionResponse:

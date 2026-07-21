@@ -17,6 +17,7 @@ dependencies = [
     "pandas>=2.2",
     "psycopg2-binary>=2.9",
     "python-multipart>=0.0.9",
+    "fpdf2>=2.7",
 ]
 
 [project.optional-dependencies]

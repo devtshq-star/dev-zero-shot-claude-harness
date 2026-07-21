@@ -21,6 +21,9 @@ export interface Dataset {
   row_count: number
   column_count: number
   profile?: DatasetProfile | null
+  // Since Phase 2: short human-readable data-quality strings derived from the
+  // profile (e.g. "column 'District_Notes' is 82% null"). Empty when clean.
+  data_quality_flags?: string[]
   uploaded_at: string
 }
 
@@ -53,6 +56,9 @@ export interface Turn {
   table_data?: TableRow[] | null
   chart_spec?: ChartSpec | null
   needs_clarification?: boolean
+  // Since Phase 2: 0–3 suggested next questions (best-effort; may be empty).
+  // Carried on a fresh assistant turn and persisted in GET /api/sessions/{id}.
+  follow_ups?: string[]
   token_usage?: TokenUsage | null
   created_at?: string
 }
@@ -155,6 +161,13 @@ export function getSession(id: string): Promise<SessionDetail> {
 // allow generous headroom — but cap it so a dead/hung server surfaces as a
 // retryable timeout instead of an indefinite "thinking…" spinner.
 const MESSAGE_TIMEOUT_MS = 120_000
+
+// Build the same-origin URL for the turn-export endpoint. It returns a raw file
+// attachment (no JSON envelope), so callers trigger a browser download against
+// this URL rather than going through `request()`.
+export function exportTurnUrl(sessionId: string, turnId: string, format: 'csv' | 'pdf'): string {
+  return `/api/sessions/${sessionId}/turns/${turnId}/export?format=${format}`
+}
 
 export function postMessage(sessionId: string, question: string): Promise<Turn> {
   return request<Turn>(`/api/sessions/${sessionId}/messages`, {

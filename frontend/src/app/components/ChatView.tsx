@@ -12,7 +12,18 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { ApiError, ChartSpec, TableRow, Turn, getSession, postMessage } from '../lib/api'
+import { ApiError, ChartSpec, TableRow, Turn, exportTurnUrl, getSession, postMessage } from '../lib/api'
+
+// Trigger a same-origin browser download for a raw file response. The export
+// endpoint sets Content-Disposition, so a plain anchor click downloads the file.
+function triggerDownload(url: string) {
+  const a = document.createElement('a')
+  a.href = url
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
 
 function DataTable({ rows }: { rows: TableRow[] }) {
   if (rows.length === 0) return null
@@ -78,8 +89,23 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`
 }
 
-function TurnBubble({ turn }: { turn: Turn }) {
+function TurnBubble({
+  turn,
+  sessionId,
+  sending,
+  onAsk,
+}: {
+  turn: Turn
+  sessionId: string
+  sending: boolean
+  onAsk: (question: string) => void
+}) {
   const isUser = turn.role === 'user'
+  const hasTable = !isUser && !!turn.table_data && turn.table_data.length > 0
+  // Assistant turns from postMessage carry `turn_id`; turns from GET /api/sessions/{id}
+  // carry `id`. Export needs a real persisted id — optimistic turns have neither yet.
+  const turnId = turn.turn_id ?? turn.id
+  const followUps = !isUser && !sending ? (turn.follow_ups ?? []).filter(q => q.trim().length > 0) : []
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -91,13 +117,46 @@ function TurnBubble({ turn }: { turn: Turn }) {
         {!isUser && turn.needs_clarification && (
           <p className="mt-1 text-xs font-medium text-amber-700">Clarification needed</p>
         )}
-        {!isUser && turn.table_data && turn.table_data.length > 0 && <DataTable rows={turn.table_data} />}
+        {hasTable && <DataTable rows={turn.table_data!} />}
         {!isUser && turn.chart_spec && turn.table_data && <Chart spec={turn.chart_spec} data={turn.table_data} />}
+        {hasTable && turnId && (
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => triggerDownload(exportTurnUrl(sessionId, turnId, 'csv'))}
+              className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={() => triggerDownload(exportTurnUrl(sessionId, turnId, 'pdf'))}
+              className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Export PDF
+            </button>
+          </div>
+        )}
         {!isUser && turn.token_usage && (
           <p className="mt-2 text-xs text-gray-400">
             {turn.token_usage.prompt_tokens + turn.token_usage.completion_tokens} tokens · ~
             {formatCost(turn.token_usage.estimated_cost_usd)}
           </p>
+        )}
+        {followUps.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1.5 text-xs font-medium text-gray-500">Suggested follow-ups</p>
+            <div className="flex flex-wrap gap-2">
+              {followUps.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => onAsk(q)}
+                  disabled={sending}
+                  className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -196,7 +255,15 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
           <p className="text-sm text-gray-400">Ask a question about the selected dataset(s) to get started.</p>
         )}
         {turns.map((turn, i) => (
-          <TurnBubble key={turn.turn_id ?? turn.id ?? i} turn={turn} />
+          <TurnBubble
+            key={turn.turn_id ?? turn.id ?? i}
+            turn={turn}
+            sessionId={sessionId}
+            sending={sending}
+            onAsk={q => {
+              if (!sending) void sendQuestion(q, false)
+            }}
+          />
         ))}
         {sending && (
           <div className="flex justify-start">

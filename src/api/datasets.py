@@ -10,6 +10,7 @@ from db.models import DatasetRow
 from db.session import get_session
 from domain.dataset import DatasetResponse
 from tools.csv_profiling import load_and_profile_csv
+from tools.data_quality import compute_data_quality_flags
 
 router = APIRouter()
 
@@ -73,5 +74,6 @@ def _to_response(dataset: DatasetRow) -> DatasetResponse:
         row_count=dataset.row_count,
         column_count=dataset.column_count,
         profile=dataset.profile,
+        data_quality_flags=compute_data_quality_flags(dataset.profile, dataset.row_count),
         uploaded_at=dataset.uploaded_at,
     )

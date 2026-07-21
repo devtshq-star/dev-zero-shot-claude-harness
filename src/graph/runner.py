@@ -31,6 +31,7 @@ def run_agent(session_id: str, question: str) -> dict:
         "table_data": final.get("table_data"),
         "chart_spec": final.get("chart_spec"),
         "needs_clarification": bool(final.get("needs_clarification")),
+        "follow_ups": final.get("follow_ups") or [],
         "token_usage": final.get("total_token_usage") or {
             "prompt_tokens": 0, "completion_tokens": 0, "estimated_cost_usd": 0.0,
         },

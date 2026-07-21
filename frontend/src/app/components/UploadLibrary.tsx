@@ -29,6 +29,7 @@ function formatDate(iso: string): string {
 
 function ProfileCard({ dataset }: { dataset: Dataset }) {
   const profile = dataset.profile
+  const qualityFlags = (dataset.data_quality_flags ?? []).filter(f => f.trim().length > 0)
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -37,6 +38,16 @@ function ProfileCard({ dataset }: { dataset: Dataset }) {
           {dataset.row_count.toLocaleString()} rows · {dataset.column_count} columns
         </span>
       </div>
+      {qualityFlags.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-semibold text-amber-800">Data quality</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-amber-700">
+            {qualityFlags.map((flag, i) => (
+              <li key={i}>{flag}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {profile && (
         <>
           {profile.duplicate_row_count > 0 && (

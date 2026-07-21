@@ -24,6 +24,7 @@ class AgentState(TypedDict, total=False):
     final_answer: str | None
     table_data: list | None
     chart_spec: dict | None
+    follow_ups: list | None
 
     # Control
     error: str | None

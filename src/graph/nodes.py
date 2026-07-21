@@ -153,10 +153,16 @@ def finalize_answer(state: AgentState) -> AgentState:
     try:
         system = _load_prompt("finalize_answer.md")
         exec_result = state["exec_result"]
+        available_columns = sorted({
+            col.get("name")
+            for ds in state.get("schema_context", {}).values()
+            for col in ds.get("columns", [])
+        })
         prompt = json.dumps({
             "question": state["question"],
             "value": exec_result.get("value"),
             "table_preview": (exec_result.get("table") or [])[:20],
+            "available_columns": available_columns,
         })
         text, usage = LLMClient().call_model_with_usage(prompt, system=system)
         decision = _extract_json(text)
@@ -170,6 +176,12 @@ def finalize_answer(state: AgentState) -> AgentState:
                 "y_field": decision.get("chart_y_field"),
             }
 
+        # Follow-up suggestions are best-effort — never fail the answer over them.
+        follow_ups = decision.get("follow_ups") or []
+        if not isinstance(follow_ups, list):
+            follow_ups = []
+        follow_ups = [str(f) for f in follow_ups if str(f).strip()][:3]
+
         total_usage = _accumulate_usage(state, usage)
         latency_ms = int((time.monotonic() - start) * 1000)
 
@@ -180,6 +192,7 @@ def finalize_answer(state: AgentState) -> AgentState:
                 content=decision["prose"],
                 table_data=table_data,
                 chart_spec=chart_spec,
+                follow_ups=follow_ups,
             )
             session.add(turn)
             session.flush()
@@ -199,6 +212,7 @@ def finalize_answer(state: AgentState) -> AgentState:
             "final_answer": decision["prose"],
             "table_data": table_data,
             "chart_spec": chart_spec,
+            "follow_ups": follow_ups,
             "total_token_usage": total_usage,
             "status": "completed",
             "_turn_id": turn_id,

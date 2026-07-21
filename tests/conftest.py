@@ -82,3 +82,16 @@ def sample_crime_csv(tmp_path) -> Path:
         lines.append(f"{district},{crime_type},2026-{month:02d}-{day:02d},{status}")
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+
+
+@pytest.fixture
+def sample_stations_csv(tmp_path) -> Path:
+    """A second dataset sharing the `district` key, for multi-file join tests."""
+    districts = ["Lucknow", "Kanpur", "Varanasi", "Agra", "Meerut", "Prayagraj"]
+    officers = [120, 95, 80, 70, 60, 85]
+    path = tmp_path / "station_rosters.csv"
+    lines = ["district,officers"]
+    for d, o in zip(districts, officers):
+        lines.append(f"{d},{o}")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
