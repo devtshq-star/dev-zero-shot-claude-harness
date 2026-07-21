@@ -16,3 +16,9 @@ build/
 *.db-shm
 *.db-wal
 data/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

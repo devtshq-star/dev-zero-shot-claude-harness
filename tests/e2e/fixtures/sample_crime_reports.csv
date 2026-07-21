@@ -1,0 +1,7 @@
+district,crime_type,occurred_at,count
+Lucknow,theft,2026-06-01,12
+Lucknow,theft,2026-06-15,9
+Kanpur,assault,2026-06-03,4
+Varanasi,theft,2026-06-10,7
+Lucknow,burglary,2026-06-20,3
+Kanpur,theft,2026-06-22,5

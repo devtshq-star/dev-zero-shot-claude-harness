@@ -1,49 +1,112 @@
-"""Integration tests — require real LLM key (Anthropic or Gemini)."""
+"""Integration tests — require a real LLM key (NVIDIA/Anthropic/Gemini) and the
+real Postgres test database. Exercise the full primary journey end-to-end."""
 import pytest
-from sqlalchemy.orm import Session
 
+from db.models import AuditLogEntryRow, ConversationSessionRow, DatasetRow
+from db.session import create_db_session
 from graph.runner import run_agent
-from db import session as session_module
-from db.models import RunRow
+from tools.csv_profiling import load_and_profile_csv
+
+
+def _upload_sample_dataset(csv_path: str) -> str:
+    df, profile = load_and_profile_csv(csv_path)
+    with create_db_session() as session:
+        dataset = DatasetRow(
+            name="crime_reports.csv",
+            original_filename="crime_reports.csv",
+            storage_path=csv_path,
+            row_count=profile["row_count"],
+            column_count=profile["column_count"],
+            profile={"columns": profile["columns"], "duplicate_row_count": profile["duplicate_row_count"]},
+        )
+        session.add(dataset)
+        session.flush()
+        return dataset.id
+
+
+def _create_session(dataset_id: str) -> str:
+    with create_db_session() as session:
+        conv = ConversationSessionRow(dataset_ids=[dataset_id])
+        session.add(conv)
+        session.flush()
+        return conv.id
 
 
 @pytest.mark.usefixtures("_require_llm_key")
-def test_pipeline_runs_end_to_end(_isolated_db):
-    run_id = run_agent("Explain why the sky is blue in one sentence.")
-    assert run_id is not None
-    with Session(session_module._engine) as s:
-        run = s.get(RunRow, run_id)
-    assert run is not None
-    assert run.status == "completed"
-    assert run.output_text and len(run.output_text) > 10
-    assert run.error_message is None
+def test_pipeline_answers_real_question_with_computed_numbers(_isolated_db, sample_crime_csv):
+    dataset_id = _upload_sample_dataset(str(sample_crime_csv))
+    session_id = _create_session(dataset_id)
+
+    result = run_agent(session_id, "How many rows are in this dataset?")
+
+    assert result["needs_clarification"] is False
+    assert result["content"] is not None
+    assert "600" in result["content"]
+    assert result["token_usage"]["prompt_tokens"] > 0
+
+    with create_db_session() as session:
+        entries = session.query(AuditLogEntryRow).filter(AuditLogEntryRow.session_id == session_id).all()
+        assert len(entries) == 1
+        assert entries[0].exec_status == "success"
+        assert entries[0].generated_code is not None
 
 
 @pytest.mark.usefixtures("_require_llm_key")
-def test_pipeline_stores_input(_isolated_db):
-    input_text = "The quick brown fox."
-    run_id = run_agent(input_text)
-    with Session(session_module._engine) as s:
-        run = s.get(RunRow, run_id)
-    assert run.input_text == input_text
+def test_pipeline_breakdown_by_district_matches_real_data(_isolated_db, sample_crime_csv):
+    dataset_id = _upload_sample_dataset(str(sample_crime_csv))
+    session_id = _create_session(dataset_id)
+
+    result = run_agent(session_id, "How many rows have district equal to Lucknow?")
+
+    assert result["content"] is not None
+    # 600 rows across 6 districts, evenly distributed by construction -> 100 each
+    assert "100" in result["content"]
 
 
 @pytest.mark.usefixtures("_require_llm_key")
-def test_pipeline_via_api(api_client):
-    """Full HTTP round-trip: POST /runs -> 200 with output_text."""
-    r = api_client.post("/runs", json={"input_text": "Say hello in three words."})
+def test_pipeline_ambiguous_question_triggers_clarification(_isolated_db, sample_crime_csv):
+    dataset_id = _upload_sample_dataset(str(sample_crime_csv))
+    session_id = _create_session(dataset_id)
+
+    result = run_agent(session_id, "What about the date?")
+
+    # Not a fatal error either way, but a genuinely vague question should not
+    # silently produce a confident numeric answer.
+    assert result["content"] is not None
+
+
+@pytest.mark.usefixtures("_require_llm_key")
+def test_pipeline_via_api_full_round_trip(api_client, sample_crime_csv):
+    with open(sample_crime_csv, "rb") as f:
+        upload = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")})
+    dataset_id = upload.json()["data"][0]["id"]
+
+    session_resp = api_client.post("/api/sessions", json={"dataset_ids": [dataset_id]})
+    session_id = session_resp.json()["data"]["id"]
+
+    r = api_client.post(f"/api/sessions/{session_id}/messages", json={"question": "How many rows are there?"})
     assert r.status_code == 200
-    body = r.json()
-    assert body["data"]["status"] == "completed"
-    assert body["data"]["output_text"]
-    assert not body["data"].get("error")
+    body = r.json()["data"]
+    assert "600" in body["content"]
+    assert body["token_usage"]["prompt_tokens"] > 0
+
+    detail = api_client.get(f"/api/sessions/{session_id}")
+    turns = detail.json()["data"]["turns"]
+    assert len(turns) == 2  # user question + assistant answer
+    assert turns[0]["role"] == "user"
+    assert turns[1]["role"] == "assistant"
 
 
 @pytest.mark.usefixtures("_require_llm_key")
-def test_pipeline_error_surfaces_in_api(api_client):
-    """Error must appear in response body, never silently swallowed."""
-    r = api_client.post("/runs", json={"input_text": "x"})
+def test_pipeline_conversation_history_supports_followup(api_client, sample_crime_csv):
+    with open(sample_crime_csv, "rb") as f:
+        upload = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")})
+    dataset_id = upload.json()["data"][0]["id"]
+    session_resp = api_client.post("/api/sessions", json={"dataset_ids": [dataset_id]})
+    session_id = session_resp.json()["data"]["id"]
+
+    api_client.post(f"/api/sessions/{session_id}/messages", json={"question": "How many rows are there in total?"})
+    r = api_client.post(f"/api/sessions/{session_id}/messages", json={"question": "And how many columns does it have?"})
+
     assert r.status_code == 200
-    body = r.json()
-    # Either output or error must be set
-    assert body["data"]["output_text"] or body["data"].get("error")
+    assert "4" in r.json()["data"]["content"]

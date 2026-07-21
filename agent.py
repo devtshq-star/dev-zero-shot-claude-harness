@@ -19,6 +19,13 @@ ROOT = Path(__file__).resolve().parent
 if sys.platform == "win32":
     os.system("")
 
+# Force UTF-8 stdout/stderr — Windows defaults to the legacy cp1252 codepage
+# when stdout isn't a real console (e.g. piped/redirected), which breaks the
+# arrow/checkmark glyphs used below.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # ── colours ──────────────────────────────────────────────────────────────────
 GREEN  = "\033[32m"
 RED    = "\033[31m"
@@ -38,6 +45,12 @@ _failures: list[str] = []
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 def run(cmd: list[str], *, cwd: Path = ROOT, capture: bool = True) -> subprocess.CompletedProcess:
+    # On Windows, shim-based executables (pnpm, npm, etc.) are .CMD/.PS1 files
+    # that CreateProcess cannot launch directly without shell=True — resolve
+    # the real path via shutil.which() first so this works cross-platform.
+    resolved = shutil.which(cmd[0])
+    if resolved:
+        cmd = [resolved, *cmd[1:]]
     try:
         return subprocess.run(cmd, cwd=cwd, capture_output=capture, text=True)
     except OSError:

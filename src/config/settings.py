@@ -14,12 +14,21 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
 
     # LLM provider — auto-detected from whichever key is set if left blank
-    llm_provider: str = Field(default="")   # "anthropic" | "gemini"
+    llm_provider: str = Field(default="")   # "anthropic" | "gemini" | "nvidia"
     llm_model: str = Field(default="")      # uses provider default when blank
+    llm_base_url: str = Field(default="")   # required for "nvidia" (OpenAI-compatible endpoint)
 
     # Provider keys — set exactly one
     anthropic_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
+    nvidia_api_key: str = Field(default="")
+
+    # Upload storage
+    upload_dir: str = Field(default="./data/uploads")
+
+    # Code-execution sandbox
+    code_exec_timeout_seconds: float = Field(default=5.0)
+    max_code_generation_attempts: int = Field(default=3)
 
 
 _settings: Settings | None = None

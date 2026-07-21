@@ -1,53 +1,70 @@
-"""DB layer tests — no LLM key required."""
+"""DB layer tests — no LLM key required, real PostgreSQL."""
 from sqlalchemy.orm import Session
-from db.models import RunRow
-import db.session as session_module
+
+from db.models import AuditLogEntryRow, ConversationSessionRow, ConversationTurnRow, DatasetRow
 
 
-def test_run_row_roundtrip(_isolated_db):
+def test_dataset_roundtrip(_isolated_db):
     with Session(_isolated_db) as s:
-        run = RunRow(input_text="hello world")
-        s.add(run)
+        dataset = DatasetRow(
+            name="crime_reports.csv",
+            original_filename="crime_reports.csv",
+            storage_path="/tmp/x.csv",
+            row_count=600,
+            column_count=4,
+            profile={"columns": [], "duplicate_row_count": 0},
+        )
+        s.add(dataset)
         s.commit()
-        run_id = run.id
+        dataset_id = dataset.id
 
     with Session(_isolated_db) as s:
-        fetched = s.get(RunRow, run_id)
+        fetched = s.get(DatasetRow, dataset_id)
         assert fetched is not None
-        assert fetched.input_text == "hello world"
-        assert fetched.status == "pending"
-        assert fetched.output_text is None
+        assert fetched.row_count == 600
+        assert fetched.profile == {"columns": [], "duplicate_row_count": 0}
 
 
-def test_run_row_status_update(_isolated_db):
+def test_session_and_turns(_isolated_db):
     with Session(_isolated_db) as s:
-        run = RunRow(input_text="test")
-        s.add(run)
+        conv = ConversationSessionRow(dataset_ids=["d1", "d2"])
+        s.add(conv)
         s.commit()
-        run_id = run.id
+        session_id = conv.id
 
-    with Session(_isolated_db) as s:
-        run = s.get(RunRow, run_id)
-        run.status = "completed"
-        run.output_text = "some output"
+        turn = ConversationTurnRow(session_id=session_id, role="user", content="How many rows?")
+        s.add(turn)
         s.commit()
 
     with Session(_isolated_db) as s:
-        run = s.get(RunRow, run_id)
-        assert run.status == "completed"
-        assert run.output_text == "some output"
+        conv = s.get(ConversationSessionRow, session_id)
+        assert conv.dataset_ids == ["d1", "d2"]
+        turns = s.query(ConversationTurnRow).filter(ConversationTurnRow.session_id == session_id).all()
+        assert len(turns) == 1
+        assert turns[0].content == "How many rows?"
 
 
-def test_multiple_runs_independent(_isolated_db):
-    ids = []
+def test_audit_log_entry(_isolated_db):
     with Session(_isolated_db) as s:
-        for i in range(3):
-            run = RunRow(input_text=f"input {i}")
-            s.add(run)
+        conv = ConversationSessionRow(dataset_ids=["d1"])
+        s.add(conv)
         s.commit()
-        # fetch all
-        runs = s.query(RunRow).all()
-        ids = [r.id for r in runs]
+        session_id = conv.id
 
-    assert len(ids) == 3
-    assert len(set(ids)) == 3  # all unique
+        entry = AuditLogEntryRow(
+            session_id=session_id,
+            turn_id=None,
+            question="How many rows?",
+            generated_code="result = len(df)",
+            exec_status="success",
+            result_summary="600 rows",
+            latency_ms=250,
+        )
+        s.add(entry)
+        s.commit()
+
+    with Session(_isolated_db) as s:
+        entries = s.query(AuditLogEntryRow).filter(AuditLogEntryRow.session_id == session_id).all()
+        assert len(entries) == 1
+        assert entries[0].exec_status == "success"
+        assert entries[0].generated_code == "result = len(df)"
