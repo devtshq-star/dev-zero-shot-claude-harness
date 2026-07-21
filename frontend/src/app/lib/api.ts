@@ -92,13 +92,31 @@ function extractErrorMessage(body: unknown, status: number): string {
   return `Request failed (${status})`
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+// Status 0 = the request never got a valid HTTP response (timeout, aborted
+// connection, or the server going away). Callers can special-case it to offer
+// a retry rather than treating it like a real server error.
+const TIMED_OUT = 0
+
+async function request<T>(path: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
+  const { timeoutMs, ...fetchOptions } = options ?? {}
+  const controller = new AbortController()
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null
+
   let res: Response
   try {
-    res = await fetch(path, options)
-  } catch {
-    throw new ApiError('Network error — is the server running?', 0)
+    res = await fetch(path, { ...fetchOptions, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError(
+        'The request timed out — the server may be busy or the connection was interrupted. Please retry.',
+        TIMED_OUT,
+      )
+    }
+    throw new ApiError('Network error — is the server running?', TIMED_OUT)
+  } finally {
+    if (timer) clearTimeout(timer)
   }
+
   const body = await parseJson(res)
   if (!res.ok) {
     throw new ApiError(extractErrorMessage(body, res.status), res.status)
@@ -133,10 +151,16 @@ export function getSession(id: string): Promise<SessionDetail> {
   return request<SessionDetail>(`/api/sessions/${id}`)
 }
 
+// The analysis pipeline can run several LLM calls plus a bounded retry loop, so
+// allow generous headroom — but cap it so a dead/hung server surfaces as a
+// retryable timeout instead of an indefinite "thinking…" spinner.
+const MESSAGE_TIMEOUT_MS = 120_000
+
 export function postMessage(sessionId: string, question: string): Promise<Turn> {
   return request<Turn>(`/api/sessions/${sessionId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
+    timeoutMs: MESSAGE_TIMEOUT_MS,
   })
 }

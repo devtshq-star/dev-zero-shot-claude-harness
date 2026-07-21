@@ -62,7 +62,7 @@ Phase 3 adds a read-only connection (ideally a read replica, never the primary w
 
 - **Language:** Python 3.11+ (backend), TypeScript (frontend).
 - **Agent framework:** LangGraph — a bounded self-correction state machine (see `spec/agent.md`).
-- **LLM provider + model:** NVIDIA NIM (OpenAI-compatible REST API), model `nvidia/llama-3.3-nemotron-super-49b-v1`, via a new `src/llm/providers/nvidia.py` adapter using the `openai` Python SDK pointed at `base_url=https://integrate.api.nvidia.com/v1`. Env vars (already in `.env`): `AGENT_LLM_PROVIDER=nvidia`, `AGENT_NVIDIA_API_KEY`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_MODEL`.
+- **LLM provider + model:** NVIDIA NIM (OpenAI-compatible REST API), model `meta/llama-3.1-70b-instruct`, via a new `src/llm/providers/nvidia.py` adapter using the `openai` Python SDK pointed at `base_url=https://integrate.api.nvidia.com/v1`. Env vars (already in `.env`): `AGENT_LLM_PROVIDER=nvidia`, `AGENT_NVIDIA_API_KEY`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_MODEL`.
   > **Assumed:** the NVIDIA NIM chat-completions endpoint is OpenAI-compatible (the standard NIM integration pattern); `openai` is added as a new dependency for this adapter only.
 - **Backend:** FastAPI (existing).
 - **Database + ORM:** PostgreSQL + SQLAlchemy 2.0 + Alembic, upgraded from the skeleton's SQLite default. Driver: `psycopg2-binary`, declared in `[project.dependencies]` (never dev-only).

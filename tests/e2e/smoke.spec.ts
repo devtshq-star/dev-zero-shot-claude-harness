@@ -33,12 +33,18 @@ test('upload a CSV, see its profile, start a session, and get a real answer', as
   await fileInput.setInputFiles(SAMPLE_CSV)
 
   // --- Profile card appears (no polling, no manual "process" step) --------------
-  await expect(page.getByRole('heading', { name: 'sample_crime_reports.csv' })).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText(/rows.*columns/)).toBeVisible()
-  await expect(page.getByText('district')).toBeVisible() // column name from the profile
+  await expect(page.getByRole('heading', { name: 'sample_crime_reports.csv' }).first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(/rows.*columns/).first()).toBeVisible()
+  // Scope to a profile-table CELL (not a loose page-wide text match) so the
+  // assertion is robust to other datasets in the shared library whose names
+  // happen to contain "district".
+  await expect(page.getByRole('cell', { name: 'district', exact: true }).first()).toBeVisible()
 
   // --- Select the dataset in the library and start a session ---------------------
-  const libraryRow = page.locator('li', { hasText: 'sample_crime_reports.csv' })
+  // The dev DB is shared, so the library may already hold other datasets (and
+  // repeat runs add another sample_crime_reports.csv). listDatasets returns
+  // newest-first, so .first() selects the row this run just uploaded.
+  const libraryRow = page.locator('li', { hasText: 'sample_crime_reports.csv' }).first()
   await libraryRow.getByRole('checkbox').check()
   await startButton.click()
 
@@ -57,6 +63,9 @@ test('upload a CSV, see its profile, start a session, and get a real answer', as
   // POST /api/sessions/{id}/messages contract) once the pipeline finishes —
   // this both confirms the "thinking" indicator clears and that a genuine
   // answer (not a crash, not a stub) rendered.
-  await expect(page.getByText(/tokens · ~\$/)).toBeVisible({ timeout: 60_000 })
+  // A real Q&A runs several sequential LLM calls (classify -> generate ->
+  // execute -> finalize), so allow the full client-side budget (see
+  // MESSAGE_TIMEOUT_MS in lib/api.ts) rather than a tight window.
+  await expect(page.getByText(/tokens · ~\$/).first()).toBeVisible({ timeout: 120_000 })
   await expect(page.getByText('thinking…')).toHaveCount(0)
 })

@@ -4,7 +4,7 @@ from openai import OpenAI
 class NvidiaProvider:
     """OpenAI-compatible client for NVIDIA NIM (https://integrate.api.nvidia.com/v1)."""
 
-    DEFAULT_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1"
+    DEFAULT_MODEL = "meta/llama-3.1-70b-instruct"
     DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
     # Rough per-token cost estimate for the UI's cost readout — NIM pricing is

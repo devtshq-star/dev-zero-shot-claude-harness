@@ -110,6 +110,8 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [retryQuestion, setRetryQuestion] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -137,12 +139,14 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [turns, sending])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const question = input.trim()
-    if (!question || sending) return
-    setInput('')
-    setTurns(prev => [...prev, { role: 'user', content: question }])
+  async function sendQuestion(question: string, isRetry: boolean) {
+    // On a retry the user's question bubble is already in the thread, so don't
+    // append it again.
+    if (!isRetry) {
+      setTurns(prev => [...prev, { role: 'user', content: question }])
+    }
+    setSendError(null)
+    setRetryQuestion(null)
     setSending(true)
     try {
       const turn = await postMessage(sessionId, question)
@@ -152,10 +156,26 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
         err instanceof ApiError
           ? err.message
           : "Couldn't complete that analysis, please try rephrasing or ask something simpler."
-      setTurns(prev => [...prev, { role: 'assistant', content: message }])
+      // Surface a retryable banner rather than a permanent assistant bubble, so
+      // an interrupted request never leaves a dangling error in the thread and
+      // the exact question can be re-sent with one click.
+      setSendError(message)
+      setRetryQuestion(question)
     } finally {
       setSending(false)
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const question = input.trim()
+    if (!question || sending) return
+    setInput('')
+    void sendQuestion(question, false)
+  }
+
+  function handleRetry() {
+    if (retryQuestion && !sending) void sendQuestion(retryQuestion, true)
   }
 
   return (
@@ -183,6 +203,17 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
             <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-400 shadow-sm">
               thinking…
             </div>
+          </div>
+        )}
+        {sendError && !sending && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span>{sendError}</span>
+            <button
+              onClick={handleRetry}
+              className="shrink-0 rounded-md bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700"
+            >
+              Retry
+            </button>
           </div>
         )}
         <div ref={bottomRef} />

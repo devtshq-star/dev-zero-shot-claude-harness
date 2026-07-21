@@ -39,7 +39,7 @@ Today, answering "how many thefts in Lucknow last month" or "which stations have
 ## Key Constraints
 
 - **Data residency (binding):** raw police-record rows must never be sent to the LLM. The LLM sees only column names/dtypes/aggregate statistics, the user's question, and generated analysis code. All row-level computation runs locally in the backend process.
-- **Cost:** keep LLM spend low — use a single mid-sized model (NVIDIA NIM `nvidia/llama-3.3-nemotron-super-49b-v1`) rather than the largest available, and show per-query token/cost estimates in the UI so usage stays visible.
+- **Cost:** keep LLM spend low — use a single mid-sized model (NVIDIA NIM `meta/llama-3.1-70b-instruct`) rather than the largest available, and show per-query token/cost estimates in the UI so usage stays visible.
 - **Scale (Phase 1):** uploaded CSVs up to ~100MB, answer within ~30s.
 - **Scale (forward-looking, Phase 3):** the MSSQL source will have multi-million-row tables and concurrent users — Phase 3 must design for sampling/pagination, connection pooling against a read-replica where possible, and query-result caching to bound latency and DB load. Not built in Phase 1/2.
 - **Audit trail (binding from Phase 1):** every question, the generated code, and the result must be persisted in the database with a timestamp — this is core, not a stretch goal, given the sensitivity of police data.

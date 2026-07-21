@@ -12,7 +12,7 @@
 
 | Agent / Node | Provider | Model ID | Rationale |
 |-------------|----------|----------|-----------|
-| `classify_intent`, `generate_code`, `reflect_on_error`, `finalize_answer` | NVIDIA NIM | `nvidia/llama-3.3-nemotron-super-49b-v1` | Single mid-sized model for all nodes per the cost-conscious constraint (no per-node model tiering in Phase 1) |
+| `classify_intent`, `generate_code`, `reflect_on_error`, `finalize_answer` | NVIDIA NIM | `meta/llama-3.1-70b-instruct` | Single mid-sized model for all nodes per the cost-conscious constraint (no per-node model tiering in Phase 1) |
 
 **Fallback behaviour:** on an API error/timeout from NVIDIA NIM, the node retries once with exponential backoff (1s); on a second failure, the graph routes to `handle_error`, which surfaces "analysis temporarily unavailable, please try again" to the user and logs the failure — the request never crashes.
 
