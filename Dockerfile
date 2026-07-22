@@ -10,8 +10,11 @@ WORKDIR /build/frontend
 RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 
 # Install deps first for layer caching, then build.
+# --ignore-scripts: skip dependency build scripts (recent pnpm errors on
+# unapproved ones, e.g. sharp). The app uses no next/image, so sharp isn't
+# needed for the static export.
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY frontend/ ./
 RUN pnpm build
 
