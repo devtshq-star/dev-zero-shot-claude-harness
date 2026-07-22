@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -26,6 +27,11 @@ def create_app() -> FastAPI:
     frontend_out = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
     if frontend_out.exists():
         app.mount("/app", StaticFiles(directory=str(frontend_out), html=True), name="frontend")
+
+        # Send the bare root to the UI so the base URL lands somewhere useful.
+        @app.get("/", include_in_schema=False)
+        def _root_redirect() -> RedirectResponse:
+            return RedirectResponse(url="/app/")
 
     return app
 
