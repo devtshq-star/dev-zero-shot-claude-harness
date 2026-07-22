@@ -1,3 +1,4 @@
+import math
 import threading
 import builtins as _builtins_module
 
@@ -50,15 +51,32 @@ def execute_code(code: str, dataframes: dict[str, pd.DataFrame], timeout_seconds
 
     value = outcome.get("value")
     table = _to_table(value)
-    return {"value": _to_jsonable(value), "table": table, "error": None}
+    return {"value": _clean_nonfinite(_to_jsonable(value)), "table": table, "error": None}
 
 
 def _to_table(value) -> list[dict] | None:
     if isinstance(value, pd.DataFrame):
-        return value.head(200).to_dict(orient="records")
+        return _clean_nonfinite(value.head(200).to_dict(orient="records"))
     if isinstance(value, pd.Series):
-        return value.reset_index().head(200).to_dict(orient="records")
+        return _clean_nonfinite(value.reset_index().head(200).to_dict(orient="records"))
     return None
+
+
+def _clean_nonfinite(obj):
+    """Recursively replace non-finite floats (NaN, Infinity, -Infinity) with None.
+
+    pandas emits NaN for empty/missing cells; json.dumps serializes these as the
+    literal tokens NaN/Infinity, which are invalid JSON and are rejected by the
+    PostgreSQL JSON column when a turn is persisted. None -> null is both valid
+    JSON and the correct semantics for a missing value.
+    """
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _clean_nonfinite(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean_nonfinite(v) for v in obj]
+    return obj
 
 
 def _to_jsonable(value):

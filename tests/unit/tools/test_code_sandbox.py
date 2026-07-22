@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 
 from tools.code_sandbox import execute_code
@@ -42,6 +44,21 @@ def test_execute_multi_dataframe_join():
     result = execute_code(code, {"crimes": crimes, "stations": stations})
     assert result["error"] is None
     assert len(result["table"]) == 2
+
+
+def test_table_replaces_nan_with_none_for_valid_json():
+    # A missing/empty cell becomes NaN in pandas. Emitting the literal token
+    # NaN into the JSON column crashes the persist step (PostgreSQL rejects it),
+    # so non-finite floats must be sanitized to null before serialization.
+    df = pd.DataFrame({"district": ["Lucknow", "Kanpur"], "last_updated": [float("nan"), 3.0]})
+    result = execute_code("result = df", {"crime_reports": df})
+    assert result["error"] is None
+    assert result["table"][0]["last_updated"] is None
+    assert result["table"][1]["last_updated"] == 3.0
+    # The serialized form must be valid JSON with no NaN/Infinity tokens.
+    serialized = json.dumps(result["table"])
+    assert "NaN" not in serialized
+    assert "Infinity" not in serialized
 
 
 def test_execute_times_out_on_infinite_loop():

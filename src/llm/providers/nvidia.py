@@ -12,8 +12,19 @@ class NvidiaProvider:
     _PROMPT_COST_PER_TOKEN = 0.00000015
     _COMPLETION_COST_PER_TOKEN = 0.00000060
 
+    # Per-request wall-clock budget for a single NIM call. Kept below the
+    # frontend's 120s abort so a slow/hung call fails fast (and retries once)
+    # instead of leaving the UI wedged until the browser aborts the request.
+    _REQUEST_TIMEOUT_SECONDS = 50.0
+    _MAX_RETRIES = 1
+
     def __init__(self, api_key: str, model: str, base_url: str = "") -> None:
-        self._client = OpenAI(api_key=api_key, base_url=base_url or self.DEFAULT_BASE_URL)
+        self._client = OpenAI(
+            api_key=api_key,
+            base_url=base_url or self.DEFAULT_BASE_URL,
+            timeout=self._REQUEST_TIMEOUT_SECONDS,
+            max_retries=self._MAX_RETRIES,
+        )
         self._model = model or self.DEFAULT_MODEL
 
     def call_model(self, prompt: str, *, system: str | None = None) -> str:
