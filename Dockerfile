@@ -3,7 +3,7 @@
 # ============================================================================
 # Stage 1 — build the Next.js static export (frontend/out, basePath /app)
 # ============================================================================
-FROM node:20-bookworm-slim AS frontend
+FROM node:22-bookworm-slim AS frontend
 WORKDIR /build/frontend
 
 # pnpm via corepack, pinned to the version the repo was built with.
