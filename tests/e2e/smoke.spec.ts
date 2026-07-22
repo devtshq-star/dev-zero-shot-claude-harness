@@ -19,7 +19,7 @@ test('upload a CSV, see its profile, start a session, and get a real answer', as
   await page.goto('/app/')
 
   // --- Page loads and is styled -------------------------------------------------
-  await expect(page.getByRole('heading', { name: 'UP Police Data Analyst Agent' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Analyze your datasets/ })).toBeVisible()
   const startButton = page.getByRole('button', { name: /Start session/ })
   await expect(startButton).toBeVisible()
   // Tailwind's bg-blue-600 should be compiled into a real color (Tailwind v4
@@ -34,7 +34,7 @@ test('upload a CSV, see its profile, start a session, and get a real answer', as
 
   // --- Profile card appears (no polling, no manual "process" step) --------------
   await expect(page.getByRole('heading', { name: 'sample_crime_reports.csv' }).first()).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText(/rows.*columns/).first()).toBeVisible()
+  await expect(page.getByText(/\d[\d,]* rows/).first()).toBeVisible()
   // Scope to a profile-table CELL (not a loose page-wide text match) so the
   // assertion is robust to other datasets in the shared library whose names
   // happen to contain "district".

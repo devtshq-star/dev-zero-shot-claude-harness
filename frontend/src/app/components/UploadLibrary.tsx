@@ -10,6 +10,15 @@ import {
   listSessions,
   uploadDataset,
 } from '../lib/api'
+import {
+  ChatIcon,
+  DatabaseIcon,
+  PlusIcon,
+  SparklesIcon,
+  TableIcon,
+  UploadIcon,
+} from './icons'
+import { Alert, AppHeader, Badge, Button, Card, EmptyState, Skeleton, Spinner } from './ui'
 
 interface UploadItem {
   key: string
@@ -31,60 +40,84 @@ function ProfileCard({ dataset }: { dataset: Dataset }) {
   const profile = dataset.profile
   const qualityFlags = (dataset.data_quality_flags ?? []).filter(f => f.trim().length > 0)
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="font-medium text-gray-900">{dataset.name}</h3>
-        <span className="text-xs text-gray-500">
-          {dataset.row_count.toLocaleString()} rows · {dataset.column_count} columns
-        </span>
-      </div>
-      {qualityFlags.length > 0 && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <p className="text-xs font-semibold text-amber-800">Data quality</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-amber-700">
-            {qualityFlags.map((flag, i) => (
-              <li key={i}>{flag}</li>
-            ))}
-          </ul>
+    <Card className="animate-rise-in overflow-hidden p-0">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-fg">
+            <TableIcon className="h-4 w-4" />
+          </span>
+          <h3 className="truncate text-sm font-semibold text-foreground">{dataset.name}</h3>
         </div>
-      )}
-      {profile && (
-        <>
-          {profile.duplicate_row_count > 0 && (
-            <p className="mt-2 text-xs font-medium text-amber-700">
-              {profile.duplicate_row_count} duplicate row{profile.duplicate_row_count === 1 ? '' : 's'} detected
-            </p>
-          )}
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-gray-200 text-gray-500">
-                  <th className="py-1 pr-3 font-medium">Column</th>
-                  <th className="py-1 pr-3 font-medium">Type</th>
-                  <th className="py-1 pr-3 font-medium">Nulls</th>
-                  <th className="py-1 pr-3 font-medium">Distinct</th>
-                  <th className="py-1 font-medium">Range</th>
-                </tr>
-              </thead>
-              <tbody>
-                {profile.columns.map(col => (
-                  <tr key={col.name} className="border-b border-gray-100 last:border-0">
-                    <td className="py-1 pr-3 font-mono text-gray-800">{col.name}</td>
-                    <td className="py-1 pr-3 text-gray-600">{col.dtype}</td>
-                    <td className={`py-1 pr-3 ${col.null_count > 0 ? 'font-medium text-amber-700' : 'text-gray-600'}`}>
-                      {col.null_count}
-                    </td>
-                    <td className="py-1 pr-3 text-gray-600">{col.distinct_count ?? '—'}</td>
-                    <td className="py-1 text-gray-600">
-                      {col.min !== undefined || col.max !== undefined ? `${col.min ?? '?'} – ${col.max ?? '?'}` : '—'}
-                    </td>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge tone="neutral">{dataset.row_count.toLocaleString()} rows</Badge>
+          <Badge tone="neutral">{dataset.column_count} cols</Badge>
+        </div>
+      </div>
+
+      <div className="space-y-3 p-4">
+        {qualityFlags.length > 0 && (
+          <Alert tone="warning">
+            <p className="font-semibold">Data quality</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {qualityFlags.map((flag, i) => (
+                <li key={i}>{flag}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+        {profile && (
+          <>
+            {profile.duplicate_row_count > 0 && (
+              <div>
+                <Badge tone="warning">
+                  {profile.duplicate_row_count} duplicate row{profile.duplicate_row_count === 1 ? '' : 's'}
+                </Badge>
+              </div>
+            )}
+            <div className="overflow-x-auto rounded-lg border border-line">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-2 text-muted">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Column</th>
+                    <th className="px-3 py-2 font-medium">Type</th>
+                    <th className="px-3 py-2 font-medium">Nulls</th>
+                    <th className="px-3 py-2 font-medium">Distinct</th>
+                    <th className="px-3 py-2 font-medium">Range</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                </thead>
+                <tbody>
+                  {profile.columns.map(col => (
+                    <tr key={col.name} className="border-t border-line/70 transition-colors hover:bg-surface-2/60">
+                      <td className="px-3 py-2 font-mono text-foreground">{col.name}</td>
+                      <td className="px-3 py-2 text-muted">{col.dtype}</td>
+                      <td className="px-3 py-2">
+                        {col.null_count > 0 ? (
+                          <span className="font-medium text-warning-fg">{col.null_count}</span>
+                        ) : (
+                          <span className="text-faint">0</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-muted">{col.distinct_count ?? '—'}</td>
+                      <td className="px-3 py-2 text-muted">
+                        {col.min !== undefined || col.max !== undefined ? `${col.min ?? '?'} – ${col.max ?? '?'}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function SectionTitle({ children, count }: { children: React.ReactNode; count?: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <h2 className="text-base font-semibold tracking-tight text-foreground">{children}</h2>
+      {count !== undefined && count > 0 && <Badge tone="neutral">{count}</Badge>}
     </div>
   )
 }
@@ -93,8 +126,10 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([])
   const [datasets, setDatasets] = useState<Dataset[]>([])
   const [datasetsError, setDatasetsError] = useState<string | null>(null)
+  const [datasetsLoading, setDatasetsLoading] = useState(true)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [sessionsError, setSessionsError] = useState<string | null>(null)
+  const [sessionsLoading, setSessionsLoading] = useState(true)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [dragOver, setDragOver] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -108,6 +143,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         setDatasetsError(null)
       })
       .catch(err => setDatasetsError(err instanceof ApiError ? err.message : 'Failed to load datasets'))
+      .finally(() => setDatasetsLoading(false))
   }, [])
 
   const refreshSessions = useCallback(() => {
@@ -117,6 +153,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         setSessionsError(null)
       })
       .catch(err => setSessionsError(err instanceof ApiError ? err.message : 'Failed to load sessions'))
+      .finally(() => setSessionsLoading(false))
   }, [])
 
   useEffect(() => {
@@ -183,133 +220,217 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-8 text-3xl font-bold tracking-tight">UP Police Data Analyst Agent</h1>
+    <div className="min-h-screen">
+      <AppHeader />
 
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold text-gray-800">Upload datasets</h2>
-        <div
-          onDragOver={e => {
-            e.preventDefault()
-            setDragOver(true)
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center text-sm transition-colors ${
-            dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'
-          }`}
-        >
-          <p className="text-gray-600">Drag and drop CSV files here, or click to choose files</p>
-          <p className="mt-1 text-xs text-gray-400">Multiple .csv files are accepted at once</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            multiple
-            className="hidden"
-            onChange={e => {
-              if (e.target.files?.length) handleFiles(e.target.files)
-              e.target.value = ''
-            }}
-          />
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+        {/* Hero */}
+        <div className="animate-fade-in mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Analyze your datasets in plain language
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted sm:text-base">
+            Upload CSV files, then start a session and ask questions in chat. The agent runs real analysis
+            against your data — never a guessed number.
+          </p>
         </div>
 
-        {uploadItems.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {uploadItems.map(item => (
-              <div key={item.key}>
-                {item.status === 'uploading' && (
-                  <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-500">
-                    Uploading &amp; parsing {item.fileName}…
-                  </div>
-                )}
-                {item.status === 'error' && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    <span className="font-medium">{item.fileName}:</span> {item.error}
-                  </div>
-                )}
-                {item.status === 'done' && item.dataset && <ProfileCard dataset={item.dataset} />}
-              </div>
-            ))}
+        {/* Upload */}
+        <section className="mb-10">
+          <div className="mb-3">
+            <SectionTitle>Upload datasets</SectionTitle>
           </div>
-        )}
-      </section>
-
-      <section className="mb-10">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Dataset library</h2>
-          <button
-            onClick={startSession}
-            disabled={selected.size === 0 || starting}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          <div
+            onDragOver={e => {
+              e.preventDefault()
+              setDragOver(true)
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                fileInputRef.current?.click()
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload CSV files by clicking or dropping them here"
+            className={cxDrop(dragOver)}
           >
-            {starting ? 'Starting…' : `Start session${selected.size ? ` (${selected.size})` : ''}`}
-          </button>
-        </div>
-        {startError && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{startError}</div>
-        )}
-        {datasetsError && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{datasetsError}</div>
-        )}
-        {datasets.length === 0 && !datasetsError && (
-          <p className="text-sm text-gray-400">No datasets uploaded yet.</p>
-        )}
-        <ul className="space-y-2">
-          {datasets.map(ds => (
-            <li
-              key={ds.id}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm"
+            <span
+              className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-colors ${
+                dragOver ? 'bg-primary text-primary-fg' : 'bg-primary-soft text-primary-soft-fg'
+              }`}
             >
-              <input
-                type="checkbox"
-                checked={selected.has(ds.id)}
-                onChange={() => toggleSelected(ds.id)}
-                className="h-4 w-4"
-              />
-              <div className="flex-1">
-                <span className="font-medium text-gray-900">{ds.name}</span>
-                <span className="ml-2 text-xs text-gray-500">
-                  {ds.row_count.toLocaleString()} rows · uploaded {formatDate(ds.uploaded_at)}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+              <UploadIcon className="h-6 w-6" />
+            </span>
+            <p className="mt-3 text-sm font-medium text-foreground">
+              Drag &amp; drop CSV files here, or <span className="text-primary">browse</span>
+            </p>
+            <p className="mt-1 text-xs text-faint">Multiple .csv files accepted · nothing leaves your server but schema</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              multiple
+              className="hidden"
+              onChange={e => {
+                if (e.target.files?.length) handleFiles(e.target.files)
+                e.target.value = ''
+              }}
+            />
+          </div>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-gray-800">Sessions</h2>
-        {sessionsError && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{sessionsError}</div>
-        )}
-        {sessions.length === 0 && !sessionsError && (
-          <p className="text-sm text-gray-400">No sessions yet — start one above.</p>
-        )}
-        <ul className="space-y-2">
-          {sessions.map(s => (
-            <li
-              key={s.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm"
+          {uploadItems.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {uploadItems.map(item => (
+                <div key={item.key}>
+                  {item.status === 'uploading' && (
+                    <Card className="flex items-center gap-3 px-4 py-3 text-sm text-muted">
+                      <Spinner className="h-4 w-4 text-primary" />
+                      <span>
+                        Uploading &amp; parsing <span className="font-medium text-foreground">{item.fileName}</span>…
+                      </span>
+                    </Card>
+                  )}
+                  {item.status === 'error' && (
+                    <Alert tone="danger">
+                      <span className="font-medium">{item.fileName}:</span> {item.error}
+                    </Alert>
+                  )}
+                  {item.status === 'done' && item.dataset && <ProfileCard dataset={item.dataset} />}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Library */}
+        <section className="mb-10">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <SectionTitle count={datasets.length}>Dataset library</SectionTitle>
+            <Button
+              onClick={startSession}
+              disabled={selected.size === 0 || starting}
+              loading={starting}
+              leftIcon={!starting && <SparklesIcon className="h-4 w-4" />}
             >
-              <div>
-                <span className="font-mono text-xs text-gray-500">{s.id}</span>
-                <span className="ml-2 text-xs text-gray-500">
-                  {s.dataset_ids.length} dataset{s.dataset_ids.length === 1 ? '' : 's'} · created{' '}
-                  {formatDate(s.created_at)}
-                </span>
-              </div>
-              <button
-                onClick={() => onOpenSession(s.id)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              {starting ? 'Starting…' : `Start session${selected.size ? ` (${selected.size})` : ''}`}
+            </Button>
+          </div>
+
+          {startError && <div className="mb-3"><Alert tone="danger">{startError}</Alert></div>}
+          {datasetsError && <div className="mb-3"><Alert tone="danger">{datasetsError}</Alert></div>}
+
+          {datasetsLoading && !datasetsError && (
+            <div className="space-y-2">
+              {[0, 1, 2].map(i => (
+                <Skeleton key={i} className="h-[58px] w-full rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {!datasetsLoading && datasets.length === 0 && !datasetsError && (
+            <EmptyState
+              icon={<DatabaseIcon className="h-6 w-6" />}
+              title="No datasets yet"
+              description="Upload a CSV above to see it profiled and ready to query."
+            />
+          )}
+
+          <ul className="space-y-2">
+            {datasets.map(ds => {
+              const isSel = selected.has(ds.id)
+              return (
+                <li key={ds.id}>
+                  <label
+                    className={`group flex cursor-pointer items-center gap-3 rounded-xl border bg-surface p-3 shadow-[var(--shadow-xs)] transition-all hover:shadow-[var(--shadow-sm)] ${
+                      isSel ? 'border-primary ring-2 ring-[var(--ring)]' : 'border-line hover:border-line-strong'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSel}
+                      onChange={() => toggleSelected(ds.id)}
+                      className="h-4 w-4 shrink-0 accent-[var(--primary)]"
+                    />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted group-hover:text-primary">
+                      <DatabaseIcon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{ds.name}</p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {ds.row_count.toLocaleString()} rows · uploaded {formatDate(ds.uploaded_at)}
+                      </p>
+                    </div>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+
+        {/* Sessions */}
+        <section>
+          <div className="mb-3">
+            <SectionTitle count={sessions.length}>Sessions</SectionTitle>
+          </div>
+
+          {sessionsError && <div className="mb-3"><Alert tone="danger">{sessionsError}</Alert></div>}
+
+          {sessionsLoading && !sessionsError && (
+            <div className="space-y-2">
+              {[0, 1].map(i => (
+                <Skeleton key={i} className="h-[54px] w-full rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {!sessionsLoading && sessions.length === 0 && !sessionsError && (
+            <EmptyState
+              icon={<ChatIcon className="h-6 w-6" />}
+              title="No sessions yet"
+              description="Select one or more datasets above and start a session to begin asking questions."
+            />
+          )}
+
+          <ul className="space-y-2">
+            {sessions.map(s => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-sm)]"
               >
-                Resume
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-fg">
+                    <ChatIcon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-xs text-muted">{s.id}</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {s.dataset_ids.length} dataset{s.dataset_ids.length === 1 ? '' : 's'} · created{' '}
+                      {formatDate(s.created_at)}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => onOpenSession(s.id)}>
+                  Resume
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+    </div>
   )
+}
+
+function cxDrop(dragOver: boolean): string {
+  return [
+    'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all',
+    dragOver
+      ? 'border-primary bg-primary-soft/60 scale-[1.01]'
+      : 'border-line-strong bg-surface hover:border-primary hover:bg-surface-2',
+  ].join(' ')
 }

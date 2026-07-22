@@ -19,7 +19,7 @@ test.setTimeout(180_000)
 test('table answer shows export buttons and (when present) follow-up chips', async ({ page }) => {
   await page.goto('/app/')
 
-  await expect(page.getByRole('heading', { name: 'UP Police Data Analyst Agent' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Analyze your datasets/ })).toBeVisible()
   const startButton = page.getByRole('button', { name: /Start session/ })
   await expect(startButton).toBeVisible()
 
