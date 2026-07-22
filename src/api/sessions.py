@@ -84,7 +84,7 @@ def post_message(session_id: str, req: MessageRequest, session: Session = Depend
     session.commit()
 
     try:
-        result = run_agent(session_id, req.question)
+        result = run_agent(session_id, req.question, language=req.language)
     except Exception as exc:  # noqa: BLE001
         raise api_error("ANALYSIS_FAILED", str(exc), 502)
 

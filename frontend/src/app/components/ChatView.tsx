@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { ApiError, ChartSpec, TableRow, Turn, exportTurnUrl, getSession, postMessage } from '../lib/api'
+import { useI18n } from '../i18n/I18nProvider'
 import {
   ArrowLeftIcon,
   CopyIcon,
@@ -21,7 +22,7 @@ import {
   SparklesIcon,
   TableIcon,
 } from './icons'
-import { Alert, Badge, Button, Skeleton, ThemeToggle, Toast } from './ui'
+import { Alert, Badge, Button, LanguageToggle, Skeleton, ThemeToggle, Toast } from './ui'
 
 // Download a file from the export endpoint. We fetch to a Blob and save via an
 // object URL with an explicit `download` attribute: a bare anchor to a PDF can
@@ -43,10 +44,8 @@ async function triggerDownload(url: string) {
     document.body.appendChild(a)
     a.click()
     a.remove()
-    // Revoke on the next tick so the download has started.
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
   } catch {
-    // Last resort: let the browser handle the URL directly.
     const a = document.createElement('a')
     a.href = url
     a.rel = 'noopener'
@@ -147,6 +146,7 @@ function TurnBubble({
   sending: boolean
   onAsk: (question: string) => void
 }) {
+  const { t } = useI18n()
   const isUser = turn.role === 'user'
   const hasTable = !isUser && !!turn.table_data && turn.table_data.length > 0
   // Assistant turns from postMessage carry `turn_id`; turns from GET /api/sessions/{id}
@@ -173,7 +173,7 @@ function TurnBubble({
         <p className="whitespace-pre-wrap">{turn.content}</p>
         {turn.needs_clarification && (
           <div className="mt-2">
-            <Badge tone="warning">Clarification needed</Badge>
+            <Badge tone="warning">{t('chat.clarificationNeeded')}</Badge>
           </div>
         )}
         {hasTable && <DataTable rows={turn.table_data!} />}
@@ -183,7 +183,7 @@ function TurnBubble({
             <Button
               variant="secondary"
               size="sm"
-              aria-label="Export CSV"
+              aria-label={t('chat.exportCsv')}
               leftIcon={<DownloadIcon className="h-3.5 w-3.5" />}
               onClick={() => triggerDownload(exportTurnUrl(sessionId, turnId, 'csv'))}
             >
@@ -192,7 +192,7 @@ function TurnBubble({
             <Button
               variant="secondary"
               size="sm"
-              aria-label="Export PDF"
+              aria-label={t('chat.exportPdf')}
               leftIcon={<DownloadIcon className="h-3.5 w-3.5" />}
               onClick={() => triggerDownload(exportTurnUrl(sessionId, turnId, 'pdf'))}
             >
@@ -203,13 +203,15 @@ function TurnBubble({
         {turn.token_usage && (
           <p className="mt-2.5 flex items-center gap-1.5 text-xs text-faint">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-            {turn.token_usage.prompt_tokens + turn.token_usage.completion_tokens} tokens · ~
-            {formatCost(turn.token_usage.estimated_cost_usd)}
+            {t('chat.tokensCost', {
+              tokens: turn.token_usage.prompt_tokens + turn.token_usage.completion_tokens,
+              cost: formatCost(turn.token_usage.estimated_cost_usd),
+            })}
           </p>
         )}
         {followUps.length > 0 && (
           <div className="mt-3 border-t border-line pt-3">
-            <p className="mb-2 text-xs font-medium text-muted">Suggested follow-ups</p>
+            <p className="mb-2 text-xs font-medium text-muted">{t('chat.suggestedFollowUps')}</p>
             <div className="flex flex-wrap gap-2">
               {followUps.map((q, i) => (
                 <button
@@ -230,6 +232,7 @@ function TurnBubble({
 }
 
 function ThinkingBubble() {
+  const { t } = useI18n()
   return (
     <div className="animate-fade-in flex justify-start gap-2.5">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-fg">
@@ -240,7 +243,7 @@ function ThinkingBubble() {
         role="status"
         aria-live="polite"
       >
-        <span className="sr-only">thinking…</span>
+        <span className="sr-only">{t('chat.thinking')}</span>
         <span className="typing-dot h-2 w-2 rounded-full bg-faint" style={{ animationDelay: '0ms' }} />
         <span className="typing-dot h-2 w-2 rounded-full bg-faint" style={{ animationDelay: '150ms' }} />
         <span className="typing-dot h-2 w-2 rounded-full bg-faint" style={{ animationDelay: '300ms' }} />
@@ -250,6 +253,7 @@ function ThinkingBubble() {
 }
 
 export default function ChatView({ sessionId, onBack }: { sessionId: string; onBack: () => void }) {
+  const { t, lang } = useI18n()
   const [turns, setTurns] = useState<Turn[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [historyError, setHistoryError] = useState<string | null>(null)
@@ -272,7 +276,7 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
         }
       })
       .catch(err => {
-        if (!cancelled) setHistoryError(err instanceof ApiError ? err.message : 'Failed to load session')
+        if (!cancelled) setHistoryError(err instanceof ApiError ? err.message : t('errors.loadSession'))
       })
       .finally(() => {
         if (!cancelled) setLoadingHistory(false)
@@ -280,7 +284,7 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
     return () => {
       cancelled = true
     }
-  }, [sessionId])
+  }, [sessionId, t])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -301,13 +305,12 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
     setRetryQuestion(null)
     setSending(true)
     try {
-      const turn = await postMessage(sessionId, question)
+      // Pass the UI language so the agent answers in it (unless the question is
+      // clearly in another language — the agent detects and matches that).
+      const turn = await postMessage(sessionId, question, lang)
       setTurns(prev => [...prev, turn])
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Couldn't complete that analysis, please try rephrasing or ask something simpler."
+      const message = err instanceof ApiError ? err.message : t('errors.analysisFailed')
       // Surface a retryable banner rather than a permanent assistant bubble, so
       // an interrupted request never leaves a dangling error in the thread and
       // the exact question can be re-sent with one click.
@@ -348,17 +351,21 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
       <header className="shrink-0 border-b border-line bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-3 px-4">
           <Button variant="ghost" size="sm" onClick={onBack} leftIcon={<ArrowLeftIcon className="h-4 w-4" />}>
-            Library
+            {t('chat.backToLibrary')}
           </Button>
           <button
             onClick={copySessionId}
-            className="group flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2"
-            title="Copy session ID"
+            className="group hidden min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 sm:flex"
+            title={t('chat.copySessionId')}
+            aria-label={t('chat.copySessionId')}
           >
             <span className="truncate font-mono">{sessionId}</span>
             <CopyIcon className="h-3.5 w-3.5 shrink-0 opacity-60 group-hover:opacity-100" />
           </button>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -384,10 +391,8 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
               <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary-soft-fg">
                 <TableIcon className="h-7 w-7" />
               </span>
-              <p className="text-base font-semibold text-foreground">Ask anything about your data</p>
-              <p className="mt-1.5 max-w-sm text-sm text-muted">
-                Try “How many rows are there?”, “Show the top 10 by count”, or “Plot the trend over time”.
-              </p>
+              <p className="text-base font-semibold text-foreground">{t('chat.emptyTitle')}</p>
+              <p className="mt-1.5 max-w-sm text-sm text-muted">{t('chat.emptyDesc')}</p>
             </div>
           )}
 
@@ -410,7 +415,7 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
               tone="warning"
               action={
                 <Button variant="secondary" size="sm" onClick={handleRetry}>
-                  Retry
+                  {t('common.retry')}
                 </Button>
               }
             >
@@ -429,26 +434,26 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask a question about the data…"
+            placeholder={t('chat.placeholder')}
             disabled={sending}
             autoFocus
-            aria-label="Ask a question about the data"
+            aria-label={t('chat.placeholder')}
             className="input h-11"
           />
           <Button
             type="submit"
-            aria-label="Ask"
+            aria-label={t('chat.ask')}
             loading={sending}
             disabled={sending || !input.trim()}
             leftIcon={!sending && <SendIcon className="h-4 w-4" />}
             className="h-11 px-3.5 sm:px-5"
           >
-            <span className="hidden sm:inline">{sending ? 'Asking…' : 'Ask'}</span>
+            <span className="hidden sm:inline">{sending ? t('chat.asking') : t('chat.ask')}</span>
           </Button>
         </form>
       </div>
 
-      {copied && <Toast message="Session ID copied" onDone={() => setCopied(false)} />}
+      {copied && <Toast message={t('chat.sessionIdCopied')} onDone={() => setCopied(false)} />}
     </div>
   )
 }

@@ -6,7 +6,7 @@ from graph.agent import agentic_ai
 from graph.state import AgentState
 
 
-def run_agent(session_id: str, question: str) -> dict:
+def run_agent(session_id: str, question: str, language: str = "en") -> dict:
     with create_db_session() as db_session:
         conv_session = db_session.get(ConversationSessionRow, session_id)
         if conv_session is None:
@@ -17,6 +17,7 @@ def run_agent(session_id: str, question: str) -> dict:
         "session_id": session_id,
         "dataset_ids": dataset_ids,
         "question": question,
+        "language": language,
         "error": None,
     }
     final = agentic_ai.invoke(initial)

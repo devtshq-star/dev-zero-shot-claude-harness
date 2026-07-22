@@ -1,0 +1,75 @@
+{
+  "common": {
+    "appName": "UP Police",
+    "appSubtitle": "Data Analyst Agent",
+    "retry": "Retry",
+    "resume": "Resume"
+  },
+  "lang": {
+    "label": "Language",
+    "english": "English",
+    "hindi": "हिन्दी",
+    "englishShort": "EN",
+    "hindiShort": "हिं"
+  },
+  "theme": {
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
+  },
+  "home": {
+    "heroTitle": "Analyze your datasets in plain language",
+    "heroSubtitle": "Upload CSV files, then start a session and ask questions in chat. The agent runs real analysis against your data — never a guessed number.",
+    "uploadHeading": "Upload datasets",
+    "dropzonePrefix": "Drag & drop CSV files here, or",
+    "dropzoneBrowse": "browse",
+    "dropzoneHint": "Multiple .csv files accepted · nothing leaves your server but schema",
+    "uploadAria": "Upload CSV files by clicking or dropping them here",
+    "uploadingParsing": "Uploading & parsing {file}…",
+    "libraryHeading": "Dataset library",
+    "startSession": "Start session",
+    "starting": "Starting…",
+    "noDatasetsTitle": "No datasets yet",
+    "noDatasetsDesc": "Upload a CSV above to see it profiled and ready to query.",
+    "noSessionsTitle": "No sessions yet",
+    "noSessionsDesc": "Select one or more datasets above and start a session to begin asking questions.",
+    "sessionsHeading": "Sessions",
+    "rows": "{count} rows",
+    "cols": "{count} cols",
+    "datasetMeta": "{rows} rows · uploaded {date}",
+    "sessionMetaOne": "{count} dataset · created {date}",
+    "sessionMetaMany": "{count} datasets · created {date}",
+    "dataQuality": "Data quality",
+    "duplicateRowsOne": "{count} duplicate row",
+    "duplicateRowsMany": "{count} duplicate rows",
+    "colColumn": "Column",
+    "colType": "Type",
+    "colNulls": "Nulls",
+    "colDistinct": "Distinct",
+    "colRange": "Range"
+  },
+  "chat": {
+    "backToLibrary": "Library",
+    "copySessionId": "Copy session ID",
+    "sessionIdCopied": "Session ID copied",
+    "emptyTitle": "Ask anything about your data",
+    "emptyDesc": "Try “How many rows are there?”, “Show the top 10 by count”, or “Plot the trend over time”.",
+    "clarificationNeeded": "Clarification needed",
+    "suggestedFollowUps": "Suggested follow-ups",
+    "thinking": "thinking…",
+    "tokensCost": "{tokens} tokens · ~{cost}",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "placeholder": "Ask a question about the data…",
+    "ask": "Ask",
+    "asking": "Asking…"
+  },
+  "errors": {
+    "loadDatasets": "Failed to load datasets",
+    "loadSessions": "Failed to load sessions",
+    "loadSession": "Failed to load session",
+    "startSession": "Failed to start session",
+    "csvOnly": "Only .csv files are supported",
+    "uploadFailed": "Upload failed",
+    "analysisFailed": "Couldn't complete that analysis, please try rephrasing or ask something simpler."
+  }
+}

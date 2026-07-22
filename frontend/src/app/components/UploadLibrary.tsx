@@ -10,10 +10,10 @@ import {
   listSessions,
   uploadDataset,
 } from '../lib/api'
+import { useI18n } from '../i18n/I18nProvider'
 import {
   ChatIcon,
   DatabaseIcon,
-  PlusIcon,
   SparklesIcon,
   TableIcon,
   UploadIcon,
@@ -28,15 +28,8 @@ interface UploadItem {
   error?: string
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
-}
-
 function ProfileCard({ dataset }: { dataset: Dataset }) {
+  const { t, formatNumber } = useI18n()
   const profile = dataset.profile
   const qualityFlags = (dataset.data_quality_flags ?? []).filter(f => f.trim().length > 0)
   return (
@@ -49,15 +42,15 @@ function ProfileCard({ dataset }: { dataset: Dataset }) {
           <h3 className="truncate text-sm font-semibold text-foreground">{dataset.name}</h3>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <Badge tone="neutral">{dataset.row_count.toLocaleString()} rows</Badge>
-          <Badge tone="neutral">{dataset.column_count} cols</Badge>
+          <Badge tone="neutral">{t('home.rows', { count: formatNumber(dataset.row_count) })}</Badge>
+          <Badge tone="neutral">{t('home.cols', { count: formatNumber(dataset.column_count) })}</Badge>
         </div>
       </div>
 
       <div className="space-y-3 p-4">
         {qualityFlags.length > 0 && (
           <Alert tone="warning">
-            <p className="font-semibold">Data quality</p>
+            <p className="font-semibold">{t('home.dataQuality')}</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {qualityFlags.map((flag, i) => (
                 <li key={i}>{flag}</li>
@@ -70,7 +63,9 @@ function ProfileCard({ dataset }: { dataset: Dataset }) {
             {profile.duplicate_row_count > 0 && (
               <div>
                 <Badge tone="warning">
-                  {profile.duplicate_row_count} duplicate row{profile.duplicate_row_count === 1 ? '' : 's'}
+                  {t(profile.duplicate_row_count === 1 ? 'home.duplicateRowsOne' : 'home.duplicateRowsMany', {
+                    count: formatNumber(profile.duplicate_row_count),
+                  })}
                 </Badge>
               </div>
             )}
@@ -78,11 +73,11 @@ function ProfileCard({ dataset }: { dataset: Dataset }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-2 text-muted">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Column</th>
-                    <th className="px-3 py-2 font-medium">Type</th>
-                    <th className="px-3 py-2 font-medium">Nulls</th>
-                    <th className="px-3 py-2 font-medium">Distinct</th>
-                    <th className="px-3 py-2 font-medium">Range</th>
+                    <th className="px-3 py-2 font-medium">{t('home.colColumn')}</th>
+                    <th className="px-3 py-2 font-medium">{t('home.colType')}</th>
+                    <th className="px-3 py-2 font-medium">{t('home.colNulls')}</th>
+                    <th className="px-3 py-2 font-medium">{t('home.colDistinct')}</th>
+                    <th className="px-3 py-2 font-medium">{t('home.colRange')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,6 +118,7 @@ function SectionTitle({ children, count }: { children: React.ReactNode; count?: 
 }
 
 export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: string) => void }) {
+  const { t, formatNumber, formatDate } = useI18n()
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([])
   const [datasets, setDatasets] = useState<Dataset[]>([])
   const [datasetsError, setDatasetsError] = useState<string | null>(null)
@@ -142,9 +138,9 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         setDatasets(data)
         setDatasetsError(null)
       })
-      .catch(err => setDatasetsError(err instanceof ApiError ? err.message : 'Failed to load datasets'))
+      .catch(err => setDatasetsError(err instanceof ApiError ? err.message : t('errors.loadDatasets')))
       .finally(() => setDatasetsLoading(false))
-  }, [])
+  }, [t])
 
   const refreshSessions = useCallback(() => {
     listSessions()
@@ -152,9 +148,9 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         setSessions(data)
         setSessionsError(null)
       })
-      .catch(err => setSessionsError(err instanceof ApiError ? err.message : 'Failed to load sessions'))
+      .catch(err => setSessionsError(err instanceof ApiError ? err.message : t('errors.loadSessions')))
       .finally(() => setSessionsLoading(false))
-  }, [])
+  }, [t])
 
   useEffect(() => {
     refreshDatasets()
@@ -169,7 +165,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         if (!file.name.toLowerCase().endsWith('.csv')) {
           setUploadItems(prev => [
             ...prev,
-            { key, fileName: file.name, status: 'error', error: 'Only .csv files are supported' },
+            { key, fileName: file.name, status: 'error', error: t('errors.csvOnly') },
           ])
           continue
         }
@@ -182,12 +178,12 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
             refreshDatasets()
           })
           .catch(err => {
-            const message = err instanceof ApiError ? err.message : 'Upload failed'
+            const message = err instanceof ApiError ? err.message : t('errors.uploadFailed')
             setUploadItems(prev => (prev.map(item => (item.key === key ? { ...item, status: 'error', error: message } : item))))
           })
       }
     },
-    [refreshDatasets]
+    [refreshDatasets, t]
   )
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -213,7 +209,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
       const session = await createSession(Array.from(selected))
       onOpenSession(session.id)
     } catch (err) {
-      setStartError(err instanceof ApiError ? err.message : 'Failed to start session')
+      setStartError(err instanceof ApiError ? err.message : t('errors.startSession'))
     } finally {
       setStarting(false)
     }
@@ -226,19 +222,14 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         {/* Hero */}
         <div className="animate-fade-in mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Analyze your datasets in plain language
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted sm:text-base">
-            Upload CSV files, then start a session and ask questions in chat. The agent runs real analysis
-            against your data — never a guessed number.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('home.heroTitle')}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted sm:text-base">{t('home.heroSubtitle')}</p>
         </div>
 
         {/* Upload */}
         <section className="mb-10">
           <div className="mb-3">
-            <SectionTitle>Upload datasets</SectionTitle>
+            <SectionTitle>{t('home.uploadHeading')}</SectionTitle>
           </div>
           <div
             onDragOver={e => {
@@ -256,7 +247,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
             }}
             role="button"
             tabIndex={0}
-            aria-label="Upload CSV files by clicking or dropping them here"
+            aria-label={t('home.uploadAria')}
             className={cxDrop(dragOver)}
           >
             <span
@@ -267,9 +258,9 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
               <UploadIcon className="h-6 w-6" />
             </span>
             <p className="mt-3 text-sm font-medium text-foreground">
-              Drag &amp; drop CSV files here, or <span className="text-primary">browse</span>
+              {t('home.dropzonePrefix')} <span className="text-primary">{t('home.dropzoneBrowse')}</span>
             </p>
-            <p className="mt-1 text-xs text-faint">Multiple .csv files accepted · nothing leaves your server but schema</p>
+            <p className="mt-1 text-xs text-faint">{t('home.dropzoneHint')}</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -290,9 +281,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
                   {item.status === 'uploading' && (
                     <Card className="flex items-center gap-3 px-4 py-3 text-sm text-muted">
                       <Spinner className="h-4 w-4 text-primary" />
-                      <span>
-                        Uploading &amp; parsing <span className="font-medium text-foreground">{item.fileName}</span>…
-                      </span>
+                      <span>{t('home.uploadingParsing', { file: item.fileName })}</span>
                     </Card>
                   )}
                   {item.status === 'error' && (
@@ -310,14 +299,14 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         {/* Library */}
         <section className="mb-10">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <SectionTitle count={datasets.length}>Dataset library</SectionTitle>
+            <SectionTitle count={datasets.length}>{t('home.libraryHeading')}</SectionTitle>
             <Button
               onClick={startSession}
               disabled={selected.size === 0 || starting}
               loading={starting}
               leftIcon={!starting && <SparklesIcon className="h-4 w-4" />}
             >
-              {starting ? 'Starting…' : `Start session${selected.size ? ` (${selected.size})` : ''}`}
+              {starting ? t('home.starting') : `${t('home.startSession')}${selected.size ? ` (${selected.size})` : ''}`}
             </Button>
           </div>
 
@@ -335,8 +324,8 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
           {!datasetsLoading && datasets.length === 0 && !datasetsError && (
             <EmptyState
               icon={<DatabaseIcon className="h-6 w-6" />}
-              title="No datasets yet"
-              description="Upload a CSV above to see it profiled and ready to query."
+              title={t('home.noDatasetsTitle')}
+              description={t('home.noDatasetsDesc')}
             />
           )}
 
@@ -362,7 +351,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{ds.name}</p>
                       <p className="mt-0.5 text-xs text-muted">
-                        {ds.row_count.toLocaleString()} rows · uploaded {formatDate(ds.uploaded_at)}
+                        {t('home.datasetMeta', { rows: formatNumber(ds.row_count), date: formatDate(ds.uploaded_at) })}
                       </p>
                     </div>
                   </label>
@@ -375,7 +364,7 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
         {/* Sessions */}
         <section>
           <div className="mb-3">
-            <SectionTitle count={sessions.length}>Sessions</SectionTitle>
+            <SectionTitle count={sessions.length}>{t('home.sessionsHeading')}</SectionTitle>
           </div>
 
           {sessionsError && <div className="mb-3"><Alert tone="danger">{sessionsError}</Alert></div>}
@@ -391,8 +380,8 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
           {!sessionsLoading && sessions.length === 0 && !sessionsError && (
             <EmptyState
               icon={<ChatIcon className="h-6 w-6" />}
-              title="No sessions yet"
-              description="Select one or more datasets above and start a session to begin asking questions."
+              title={t('home.noSessionsTitle')}
+              description={t('home.noSessionsDesc')}
             />
           )}
 
@@ -409,13 +398,15 @@ export default function UploadLibrary({ onOpenSession }: { onOpenSession: (id: s
                   <div className="min-w-0">
                     <p className="truncate font-mono text-xs text-muted">{s.id}</p>
                     <p className="mt-0.5 text-xs text-muted">
-                      {s.dataset_ids.length} dataset{s.dataset_ids.length === 1 ? '' : 's'} · created{' '}
-                      {formatDate(s.created_at)}
+                      {t(s.dataset_ids.length === 1 ? 'home.sessionMetaOne' : 'home.sessionMetaMany', {
+                        count: formatNumber(s.dataset_ids.length),
+                        date: formatDate(s.created_at),
+                      })}
                     </p>
                   </div>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => onOpenSession(s.id)}>
-                  Resume
+                  {t('common.resume')}
                 </Button>
               </li>
             ))}

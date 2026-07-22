@@ -30,6 +30,7 @@ class SessionDetailResponse(SessionResponse):
 
 class MessageRequest(BaseModel):
     question: str
+    language: str = "en"  # UI language ("en"|"hi"); preferred agent response language
 
 
 class TokenUsage(BaseModel):

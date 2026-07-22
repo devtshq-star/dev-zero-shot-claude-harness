@@ -6,6 +6,7 @@
  * shares the same look and the markup stays declarative.
  */
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useI18n, type Lang } from '../i18n/I18nProvider'
 import {
   AlertIcon,
   CheckIcon,
@@ -156,6 +157,7 @@ export function Alert({
 
 /* -------------------------- ThemeToggle --------------------------- */
 export function ThemeToggle() {
+  const { t } = useI18n()
   const [dark, setDark] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -173,21 +175,60 @@ export function ThemeToggle() {
     setDark(next)
   }
 
+  const label = dark ? t('theme.toLight') : t('theme.toDark')
   return (
     <button
       type="button"
       onClick={toggle}
       className="btn btn-ghost btn-icon border border-line"
-      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={dark ? 'Light mode' : 'Dark mode'}
+      aria-label={label}
+      title={label}
     >
       {dark ? <SunIcon className="h-[18px] w-[18px]" /> : <MoonIcon className="h-[18px] w-[18px]" />}
     </button>
   )
 }
 
+/* ------------------------- LanguageToggle ------------------------- */
+export function LanguageToggle() {
+  const { lang, setLang, t } = useI18n()
+  const options: { code: Lang; short: string; full: string }[] = [
+    { code: 'en', short: t('lang.englishShort'), full: t('lang.english') },
+    { code: 'hi', short: t('lang.hindiShort'), full: t('lang.hindi') },
+  ]
+  return (
+    <div
+      role="group"
+      aria-label={t('lang.label')}
+      className="inline-flex items-center rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold"
+    >
+      {options.map(o => {
+        const active = lang === o.code
+        return (
+          <button
+            key={o.code}
+            type="button"
+            lang={o.code}
+            onClick={() => setLang(o.code)}
+            aria-pressed={active}
+            aria-label={o.full}
+            title={o.full}
+            className={cx(
+              'rounded-md px-2.5 py-1 transition-all duration-150',
+              active ? 'bg-primary text-primary-fg shadow-[var(--shadow-xs)]' : 'text-muted hover:text-foreground'
+            )}
+          >
+            {o.short}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ---------------------------- AppHeader --------------------------- */
 export function AppHeader({ right }: { right?: ReactNode }) {
+  const { t } = useI18n()
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-canvas/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -196,12 +237,13 @@ export function AppHeader({ right }: { right?: ReactNode }) {
             <ShieldIcon className="h-5 w-5" />
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight text-foreground">UP Police</p>
-            <p className="text-xs text-muted">Data Analyst Agent</p>
+            <p className="text-sm font-semibold tracking-tight text-foreground">{t('common.appName')}</p>
+            <p className="text-xs text-muted">{t('common.appSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {right}
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </div>

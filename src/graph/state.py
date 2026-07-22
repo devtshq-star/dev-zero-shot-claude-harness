@@ -8,6 +8,7 @@ class AgentState(TypedDict, total=False):
 
     # Input
     question: str
+    language: str                  # UI language ("en"|"hi") — preferred answer language
 
     # Pipeline data
     schema_context: dict           # {dataset_name: {"columns": [...], "row_count": int}}

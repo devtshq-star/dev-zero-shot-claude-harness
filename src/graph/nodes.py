@@ -158,12 +158,14 @@ def finalize_answer(state: AgentState) -> AgentState:
             for ds in state.get("schema_context", {}).values()
             for col in ds.get("columns", [])
         })
+        language_name = {"hi": "Hindi", "en": "English"}.get(state.get("language", "en"), "English")
         prompt = json.dumps({
             "question": state["question"],
             "value": exec_result.get("value"),
             "table_preview": (exec_result.get("table") or [])[:20],
             "available_columns": available_columns,
-        })
+            "response_language": language_name,
+        }, ensure_ascii=False)
         text, usage = LLMClient().call_model_with_usage(prompt, system=system)
         decision = _extract_json(text)
 

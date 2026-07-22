@@ -1,0 +1,75 @@
+{
+  "common": {
+    "appName": "यूपी पुलिस",
+    "appSubtitle": "डेटा विश्लेषक एजेंट",
+    "retry": "पुनः प्रयास करें",
+    "resume": "फिर से खोलें"
+  },
+  "lang": {
+    "label": "भाषा",
+    "english": "English",
+    "hindi": "हिन्दी",
+    "englishShort": "EN",
+    "hindiShort": "हिं"
+  },
+  "theme": {
+    "toLight": "लाइट थीम पर जाएँ",
+    "toDark": "डार्क थीम पर जाएँ"
+  },
+  "home": {
+    "heroTitle": "अपने डेटासेट का विश्लेषण सरल भाषा में करें",
+    "heroSubtitle": "CSV फ़ाइलें अपलोड करें, फिर एक सत्र शुरू करें और चैट में प्रश्न पूछें। एजेंट आपके डेटा पर वास्तविक विश्लेषण चलाता है — कभी अनुमानित संख्या नहीं।",
+    "uploadHeading": "डेटासेट अपलोड करें",
+    "dropzonePrefix": "CSV फ़ाइलें यहाँ खींचें और छोड़ें, या",
+    "dropzoneBrowse": "ब्राउज़ करें",
+    "dropzoneHint": "एकाधिक .csv फ़ाइलें स्वीकार्य · स्कीमा के अलावा कुछ भी आपके सर्वर से बाहर नहीं जाता",
+    "uploadAria": "क्लिक करके या फ़ाइलें छोड़कर CSV अपलोड करें",
+    "uploadingParsing": "{file} अपलोड और पार्स हो रहा है…",
+    "libraryHeading": "डेटासेट लाइब्रेरी",
+    "startSession": "सत्र शुरू करें",
+    "starting": "शुरू हो रहा है…",
+    "noDatasetsTitle": "अभी तक कोई डेटासेट नहीं",
+    "noDatasetsDesc": "ऊपर एक CSV अपलोड करें ताकि वह प्रोफ़ाइल होकर पूछताछ के लिए तैयार हो जाए।",
+    "noSessionsTitle": "अभी तक कोई सत्र नहीं",
+    "noSessionsDesc": "प्रश्न पूछना शुरू करने के लिए ऊपर एक या अधिक डेटासेट चुनें और सत्र शुरू करें।",
+    "sessionsHeading": "सत्र",
+    "rows": "{count} पंक्तियाँ",
+    "cols": "{count} कॉलम",
+    "datasetMeta": "{rows} पंक्तियाँ · अपलोड {date}",
+    "sessionMetaOne": "{count} डेटासेट · निर्मित {date}",
+    "sessionMetaMany": "{count} डेटासेट · निर्मित {date}",
+    "dataQuality": "डेटा गुणवत्ता",
+    "duplicateRowsOne": "{count} डुप्लिकेट पंक्ति",
+    "duplicateRowsMany": "{count} डुप्लिकेट पंक्तियाँ",
+    "colColumn": "कॉलम",
+    "colType": "प्रकार",
+    "colNulls": "नल",
+    "colDistinct": "अद्वितीय",
+    "colRange": "परास"
+  },
+  "chat": {
+    "backToLibrary": "लाइब्रेरी",
+    "copySessionId": "सत्र आईडी कॉपी करें",
+    "sessionIdCopied": "सत्र आईडी कॉपी की गई",
+    "emptyTitle": "अपने डेटा के बारे में कुछ भी पूछें",
+    "emptyDesc": "आज़माएँ: “कितनी पंक्तियाँ हैं?”, “गिनती के अनुसार शीर्ष 10 दिखाएँ”, या “समय के साथ रुझान दिखाएँ”।",
+    "clarificationNeeded": "स्पष्टीकरण आवश्यक",
+    "suggestedFollowUps": "सुझाए गए अगले प्रश्न",
+    "thinking": "सोच रहा है…",
+    "tokensCost": "{tokens} टोकन · ~{cost}",
+    "exportCsv": "CSV निर्यात करें",
+    "exportPdf": "PDF निर्यात करें",
+    "placeholder": "डेटा के बारे में प्रश्न पूछें…",
+    "ask": "पूछें",
+    "asking": "पूछ रहे हैं…"
+  },
+  "errors": {
+    "loadDatasets": "डेटासेट लोड करने में विफल",
+    "loadSessions": "सत्र लोड करने में विफल",
+    "loadSession": "सत्र लोड करने में विफल",
+    "startSession": "सत्र शुरू करने में विफल",
+    "csvOnly": "केवल .csv फ़ाइलें समर्थित हैं",
+    "uploadFailed": "अपलोड विफल",
+    "analysisFailed": "वह विश्लेषण पूरा नहीं हो सका, कृपया दोबारा शब्दों में पूछें या कुछ सरल पूछें।"
+  }
+}

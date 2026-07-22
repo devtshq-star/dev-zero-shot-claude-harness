@@ -169,11 +169,13 @@ export function exportTurnUrl(sessionId: string, turnId: string, format: 'csv' |
   return `/api/sessions/${sessionId}/turns/${turnId}/export?format=${format}`
 }
 
-export function postMessage(sessionId: string, question: string): Promise<Turn> {
+// `language` is the UI language ('en' | 'hi'); the agent uses it to pick the
+// response language (falling back to whatever language the question is in).
+export function postMessage(sessionId: string, question: string, language = 'en'): Promise<Turn> {
   return request<Turn>(`/api/sessions/${sessionId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, language }),
     timeoutMs: MESSAGE_TIMEOUT_MS,
   })
 }
