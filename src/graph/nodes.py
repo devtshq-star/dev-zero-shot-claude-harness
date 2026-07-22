@@ -27,7 +27,9 @@ def _extract_json(text: str) -> dict:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise ValueError(f"No JSON object found in LLM response: {text!r}")
-    return json.loads(match.group(0))
+    # strict=False tolerates raw control characters (e.g. a literal newline the
+    # model puts inside the "prose" string) instead of rejecting the whole answer.
+    return json.loads(match.group(0), strict=False)
 
 
 def _extract_code(text: str) -> str:
