@@ -318,9 +318,12 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    // h-[100dvh] tracks the *visible* viewport (mobile browser chrome / on-screen
+    // keyboard), and overflow-hidden locks the column so only the message list
+    // scrolls — the composer stays pinned to the bottom regardless of thread length.
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/80 backdrop-blur-md">
+      <header className="shrink-0 border-b border-line bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-3 px-4">
           <Button variant="ghost" size="sm" onClick={onBack} leftIcon={<ArrowLeftIcon className="h-4 w-4" />}>
             Library
@@ -338,7 +341,7 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
       </header>
 
       {/* Messages */}
-      <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4">
+      <div className="mx-auto w-full min-h-0 max-w-3xl flex-1 overflow-y-auto px-4">
         <div className="space-y-4 py-6">
           {loadingHistory && (
             <div className="space-y-4">
@@ -397,7 +400,7 @@ export default function ChatView({ sessionId, onBack }: { sessionId: string; onB
       </div>
 
       {/* Composer */}
-      <div className="border-t border-line bg-canvas/80 backdrop-blur-md">
+      <div className="shrink-0 border-t border-line bg-canvas/80 backdrop-blur-md">
         <form onSubmit={handleSubmit} className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-4">
           <input
             ref={inputRef}
