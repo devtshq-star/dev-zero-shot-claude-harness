@@ -64,18 +64,6 @@ def test_pipeline_breakdown_by_district_matches_real_data(_isolated_db, sample_c
 
 
 @pytest.mark.usefixtures("_require_llm_key")
-def test_pipeline_ambiguous_question_triggers_clarification(_isolated_db, sample_crime_csv):
-    dataset_id = _upload_sample_dataset(str(sample_crime_csv))
-    session_id = _create_session(dataset_id)
-
-    result = run_agent(session_id, "What about the date?")
-
-    # Not a fatal error either way, but a genuinely vague question should not
-    # silently produce a confident numeric answer.
-    assert result["content"] is not None
-
-
-@pytest.mark.usefixtures("_require_llm_key")
 def test_pipeline_via_api_full_round_trip(api_client, sample_crime_csv):
     with open(sample_crime_csv, "rb") as f:
         upload = api_client.post("/api/datasets", files={"files": ("crime_reports.csv", f, "text/csv")})

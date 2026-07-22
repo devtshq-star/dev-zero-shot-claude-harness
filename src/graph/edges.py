@@ -5,14 +5,6 @@ from graph.state import AgentState
 def after_load_context(state: AgentState) -> str:
     if state.get("error"):
         return "handle_error"
-    return "classify_intent"
-
-
-def after_classify_intent(state: AgentState) -> str:
-    if state.get("error"):
-        return "handle_error"
-    if state.get("needs_clarification"):
-        return "handle_clarification"
     return "generate_code"
 
 
