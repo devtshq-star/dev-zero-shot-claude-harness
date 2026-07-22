@@ -38,9 +38,9 @@ def test_provider_raises_with_no_key(monkeypatch, tmp_path):
     import config.settings as m
     m._settings = None
 
-    from llm.client import _make_provider
+    from llm.client import _resolve_primary
     with pytest.raises(RuntimeError, match="No LLM provider configured"):
-        _make_provider()
+        _resolve_primary(m.get_settings())
 
 
 def test_explicit_provider_wins(monkeypatch, tmp_path):
@@ -66,7 +66,8 @@ def test_nvidia_provider_constructed(monkeypatch, tmp_path):
     import config.settings as m
     m._settings = None
 
-    from llm.client import _make_provider
+    from llm.client import _resolve_primary
     from llm.providers.nvidia import NvidiaProvider
-    provider = _make_provider()
+    name, provider = _resolve_primary(m.get_settings())
+    assert name == "nvidia"
     assert isinstance(provider, NvidiaProvider)

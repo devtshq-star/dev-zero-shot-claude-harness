@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="")
     nvidia_api_key: str = Field(default="")
 
+    # Optional fallback provider — used automatically for a single call when the
+    # primary provider errors (rate limit, timeout, outage). Leave blank to
+    # disable. base_url is only needed for the OpenAI-compatible "nvidia" slot.
+    fallback_provider: str = Field(default="")   # "anthropic" | "gemini" | "nvidia"
+    fallback_model: str = Field(default="")
+    fallback_api_key: str = Field(default="")
+    fallback_base_url: str = Field(default="")
+
     # Upload storage
     upload_dir: str = Field(default="./data/uploads")
 
