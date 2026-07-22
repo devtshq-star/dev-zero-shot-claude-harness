@@ -23,15 +23,37 @@ import {
 } from './icons'
 import { Alert, Badge, Button, Skeleton, ThemeToggle, Toast } from './ui'
 
-// Trigger a same-origin browser download for a raw file response. The export
-// endpoint sets Content-Disposition, so a plain anchor click downloads the file.
-function triggerDownload(url: string) {
-  const a = document.createElement('a')
-  a.href = url
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+// Download a file from the export endpoint. We fetch to a Blob and save via an
+// object URL with an explicit `download` attribute: a bare anchor to a PDF can
+// be intercepted by the browser's built-in PDF viewer (opens/ignores instead of
+// downloading), whereas a blob + download name reliably saves the file. Falls
+// back to a direct anchor navigation if the fetch is blocked for any reason.
+async function triggerDownload(url: string) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Export failed (${res.status})`)
+    const blob = await res.blob()
+    const disposition = res.headers.get('content-disposition') ?? ''
+    const match = /filename="?([^"]+)"?/.exec(disposition)
+    const filename = match?.[1] ?? url.split('/').pop() ?? 'export'
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    // Revoke on the next tick so the download has started.
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  } catch {
+    // Last resort: let the browser handle the URL directly.
+    const a = document.createElement('a')
+    a.href = url
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
 }
 
 function DataTable({ rows }: { rows: TableRow[] }) {

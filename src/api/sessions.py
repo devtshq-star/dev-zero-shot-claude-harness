@@ -15,7 +15,7 @@ from domain.session import (
     TokenUsage,
 )
 from graph.runner import run_agent
-from tools.export import table_to_csv_bytes, table_to_pdf_bytes
+from tools.export import report_filename, table_to_csv_bytes, table_to_pdf_bytes
 
 router = APIRouter()
 
@@ -118,9 +118,14 @@ def export_turn(session_id: str, turn_id: str, format: str = "csv", session: Ses
         media_type = "text/csv"
         filename = f"result-{turn_id[:8]}.csv"
     else:
-        payload = table_to_pdf_bytes(turn.table_data, title=_export_title(session, turn))
+        report_name = _export_title(session, turn)
+        payload = table_to_pdf_bytes(
+            turn.table_data,
+            title=report_name,
+            meta={"report_id": turn_id[:8], "report_name": report_name},
+        )
         media_type = "application/pdf"
-        filename = f"result-{turn_id[:8]}.pdf"
+        filename = report_filename(report_name)
 
     return StreamingResponse(
         iter([payload]),
