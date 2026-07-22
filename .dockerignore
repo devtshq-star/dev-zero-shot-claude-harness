@@ -1,0 +1,28 @@
+# Python
+**/__pycache__/
+**/*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend build artifacts (frontend/out is rebuilt in the image)
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Local data, secrets, logs, scratch
+.env
+.env.*
+data/
+*.log
+scratch_*
+test-results/
+playwright-report/
+
+# VCS / editor / CI
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
